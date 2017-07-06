@@ -35,6 +35,11 @@ image_schema = {
         'minlength': 1,
         'maxlength': 50,
     },
+    'session': {
+        'type': 'string',
+        'minlength': 1,
+        'maxlength': 50,
+    },
     'slice': {
         'type': 'integer',
         'min': -10000,
