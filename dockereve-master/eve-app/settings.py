@@ -17,8 +17,45 @@
 """
 
 import os
+import base64
+import json
 from copy import deepcopy
 
+
+def key_type(d, t=int):
+    try:
+        kt = [isinstance(t(k), t) for k in d.keys()]
+    except ValueError:
+        return False
+    return sum(kt) == len(kt)
+
+
+def value_type(d, t=dict):
+    kt = [isinstance(k, t) for k in d.values()]
+    return sum(kt) == len(kt)
+
+
+def mask_json(field, value, error):
+    if isinstance(value, str):
+        try:
+            jv = json.loads(value)
+        except json.JSONDecodeError as e:
+            error(field, "If a string is posted as the mask, it must be decodable to a JSON. JSON decoding failed with the following error: %s"%e)
+    elif isinstance(value,dict):
+        jv = value
+    else:
+        error(field, "The mask must be a json dict of dicts or a string that can be decoded to a JSON")
+
+    if not key_type(jv):
+        error(field, "Must be a dict with int keys")
+    if not value_type(jv):
+        error(field, "Must be a dict of dicts")
+    kv = [key_type(v) for v in jv.values()]
+    if not sum(kv) == len(kv):
+        error(field, "Nested dict should have integer keys")
+    kvv = [value_type(v, int) for v in jv.values()]
+    if not sum(kvv) == len(kvv):
+        error(field, "Values of nested dict should all be integers")
 
 # Our API will expose two resources (MongoDB collections): 'people' and
 # 'works'. In order to allow for proper data validation, we define beaviour
@@ -60,7 +97,7 @@ mask_schema = {
                 },
             },
     'pic': {
-        'type': 'media',
+        'validator': mask_json,
     },
 }
 

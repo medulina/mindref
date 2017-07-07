@@ -4,7 +4,7 @@
 
 import os
 import socket
-
+import json
 from eve import Eve
 from eve.auth import TokenAuth
 from eve_swagger import swagger
@@ -21,7 +21,12 @@ app.register_blueprint(swagger, url_prefix='/docs/api')
 app.add_url_rule('/docs/api', 'eve_swagger.index')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
+def on_insert_mask(items):
+    for i in items:
+        if isinstance(i['pic'],str):
+            i['pic'] = json.loads(i['pic'])
 
+app.on_insert_mask += on_insert_mask
 
 # required. See http://swagger.io/specification/#infoObject for details.
 app.config['SWAGGER_INFO'] = {
