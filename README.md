@@ -16,21 +16,35 @@ docker-compose up
 
 Browse to localhost for the swagger api documentation, then promptly ignore that documentation for uploading images. Instead of doing what it says, you'll need to submit images as a form as described [here](https://github.com/pyeve/eve/blob/ab1c6c028a68918df51ba22c7a157fe74ecbcd34/docs/features.rst#file-storage).
 
-Here's an example of posting an image with curl:
-```
-curl -F "slice=0" -F "task=task1" -F "pic=@relative/or/absolute/path/to/some/.jpg" -F "slice_direction=ax" -F "subject=test_sub" http://localhost/api/v1/image
-```
-
-And here's python 3 example of pulling all of the records down and saving out the image for the first one:
-
+Here's an example of posting an image and associated mask with the Python 3 requests library:
 ```
 import requests
-import base64
-
-r = requests.get('http://localhost/api/v1/image')
-img = r.json()['_items'][0]['pic']
-with open("output/path/for/.jpg", "wb") as fh:
-    fh.write(base64.decodebytes(img.encode()))
+from pathlib import Path
+import json 
+# this code assumes that the jpg, the json describing it, 
+# and the mask file have the same name with different extenstions
+url = 'http://localhost/api/v1/'
+i = Path('data/0ff016cefb9590eb8cc1e3f7afc74ac372a6e0c27f98d1373b54e244.jpg')
+j = i.with_suffix('.json')
+with open(j,'r') as h:
+    manifest = json.load(h)
+with open(i,'rb') as img:
+    r = requests.post(url+'image',files={'pic':img},data=manifest)
+m = i.with_suffix('.mask')
+image_id = r.json()['_id']
+if m.exists():
+    mask_dat = {'owner':image_id}
+    with open(m,'rb') as h:
+        mask_dat['pic'] = json.dumps(json.load(h))
+        rm = requests.post(url+'mask',data=mask_dat)
 ```
 
-Masks are nominally implimented but presently completely untested.
+Here we use the id of the image we just uploaded to download an image and it's mask:
+
+```
+geti_url = url+'image?where={"_id":"%s"}'%image_id
+res_i= requests.get(geti_url)
+
+getm_url = url+'mask?where={"owner":"%s"}'%image_id
+res_m= requests.get(getm_url)
+```
