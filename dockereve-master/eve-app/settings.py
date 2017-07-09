@@ -57,8 +57,8 @@ def mask_json(field, value, error):
     if not sum(kvv) == len(kvv):
         error(field, "Values of nested dict should all be integers")
 
-# Our API will expose two resources (MongoDB collections): 'people' and
-# 'works'. In order to allow for proper data validation, we define beaviour
+# Our API will expose three resources (MongoDB collections): 'image' and 'mask'.
+# In order to allow for proper data validation, we define beaviour
 # and structure.
 image_schema = {
     'slice_direction': {'type': 'string', 'allowed': ['ax', 'cor', 'sag']},
