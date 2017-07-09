@@ -17,7 +17,6 @@
 """
 
 import os
-import base64
 import json
 from copy import deepcopy
 
@@ -41,7 +40,7 @@ def mask_json(field, value, error):
             jv = json.loads(value)
         except json.JSONDecodeError as e:
             error(field, "If a string is posted as the mask, it must be decodable to a JSON. JSON decoding failed with the following error: %s"%e)
-    elif isinstance(value,dict):
+    elif isinstance(value, dict):
         jv = value
     else:
         error(field, "The mask must be a json dict of dicts or a string that can be decoded to a JSON")
@@ -61,8 +60,15 @@ def mask_json(field, value, error):
 # In order to allow for proper data validation, we define beaviour
 # and structure.
 image_schema = {
-    'slice_direction': {'type': 'string', 'allowed': ['ax', 'cor', 'sag']},
+    'slice_direction': {
+        'type': 'string',
+        'allowed': ['ax', 'cor', 'sag']
+    },
     'task': {
+        'type': 'string',
+        'allowed': ['test', 'train'],
+    },
+    'project': {
         'type': 'string',
         'minlength': 1,
         'maxlength': 50,
@@ -88,19 +94,52 @@ image_schema = {
 }
 
 mask_schema = {
-    'owner': {
-                'type': 'objectid',
-                'required': True,
-                'data_relation': {
-                    'resource': 'image',
-                    'embeddable': True
-                },
-            },
+    'image_id': {
+        'type': 'objectid',
+        'required': True,
+        'data_relation': {
+            'resource': 'image',
+            'embeddable': True
+        },
+    },
+    'user_id': {
+        'type': 'objectid',
+        #'required': True,
+        'data_relation': {
+            'resource': 'user',
+            'embeddable': True
+        },
+    },
+    'task': {
+        'type': 'string',
+        'allowed': ['train', 'truth', 'try'],
+    },
+    'score': {
+        'type': 'float'
+    },
     'pic': {
         'validator': mask_json,
     },
 }
 
+user_schema = {
+    'username': {
+        'type': 'string',
+        'required': True
+    },
+    'n_subs': {
+        'type': 'integer'
+    },
+    'total_score': {
+        'type': 'float'
+    },
+    'ave_score': {
+        'type': 'float'
+    },
+    'avatar': {
+        'type': 'media',
+    },
+}
 
 settings = {
     'URL_PREFIX': 'api',
@@ -121,9 +160,14 @@ settings = {
         'mask': {
             'item_title': 'mask',
         },
+        'user': {
+            'item_title': 'user',
+        },
 
     }
 }
 
 settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
+settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
+

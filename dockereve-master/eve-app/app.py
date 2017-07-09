@@ -16,7 +16,7 @@ class TokenAuth(TokenAuth):
     def check_auth(self, token, allowed_roles, resource, method):
         return token == API_TOKEN
 
-app = Eve(settings=settings)
+app = Eve(settings=settings, auth=TokenAuth)
 app.register_blueprint(swagger, url_prefix='/docs/api')
 app.add_url_rule('/docs/api', 'eve_swagger.index')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -30,7 +30,7 @@ app.on_insert_mask += on_insert_mask
 
 # required. See http://swagger.io/specification/#infoObject for details.
 app.config['SWAGGER_INFO'] = {
-    'title': 'MRIQC Web API',
+    'title': 'mindr Web API',
     'version': 'v1'
 }
 

@@ -20,7 +20,8 @@ Here's an example of posting an image and associated mask with the Python 3 requ
 ```
 import requests
 from pathlib import Path
-import json 
+import json
+import os
 # this code assumes that the jpg, the json describing it, 
 # and the mask file have the same name with different extenstions
 url = 'http://localhost/api/v1/'
@@ -29,14 +30,15 @@ j = i.with_suffix('.json')
 with open(j,'r') as h:
     manifest = json.load(h)
 with open(i,'rb') as img:
-    r = requests.post(url+'image',files={'pic':img},data=manifest)
+    r = requests.post(url+'image',files={'pic':img},data=manifest, headers={'Authorization':os.environ.get('API_TOKEN','"testing_secret"')})
 m = i.with_suffix('.mask')
 image_id = r.json()['_id']
 if m.exists():
-    mask_dat = {'owner':image_id}
+    mask_dat = {'image_id':image_id,'task':'truth'}
     with open(m,'rb') as h:
         mask_dat['pic'] = json.dumps(json.load(h))
-        rm = requests.post(url+'mask',data=mask_dat)
+        rm = requests.post(url+'mask',data=mask_dat, headers={'Authorization':os.environ.get('API_TOKEN','"testing_secret"')})
+        
 ```
 
 Here we use the id of the image we just uploaded to download an image and it's mask:
@@ -45,6 +47,6 @@ Here we use the id of the image we just uploaded to download an image and it's m
 geti_url = url+'image?where={"_id":"%s"}'%image_id
 res_i= requests.get(geti_url)
 
-getm_url = url+'mask?where={"owner":"%s"}'%image_id
+getm_url = url+'mask?where={"image_id":"%s"}'%image_id
 res_m= requests.get(getm_url)
 ```
