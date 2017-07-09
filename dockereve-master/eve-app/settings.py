@@ -64,11 +64,11 @@ image_schema = {
         'type': 'string',
         'allowed': ['ax', 'cor', 'sag']
     },
-    'task': {
+    'mode': {
         'type': 'string',
         'allowed': ['test', 'train'],
     },
-    'project': {
+    'task': {
         'type': 'string',
         'minlength': 1,
         'maxlength': 50,
@@ -110,7 +110,7 @@ mask_schema = {
             'embeddable': True
         },
     },
-    'task': {
+    'mode': {
         'type': 'string',
         'allowed': ['train', 'truth', 'try'],
     },

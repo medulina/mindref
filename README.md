@@ -34,7 +34,7 @@ with open(i,'rb') as img:
 m = i.with_suffix('.mask')
 image_id = r.json()['_id']
 if m.exists():
-    mask_dat = {'image_id':image_id,'task':'truth'}
+    mask_dat = {'image_id':image_id,'mode':'truth'}
     with open(m,'rb') as h:
         mask_dat['pic'] = json.dumps(json.load(h))
         rm = requests.post(url+'mask',data=mask_dat, headers={'Authorization':os.environ.get('API_TOKEN','"testing_secret"')})
