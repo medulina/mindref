@@ -9,6 +9,7 @@ from eve import Eve
 from eve.auth import TokenAuth
 from eve_swagger import swagger
 from settings import settings
+from bson.objectid import ObjectId
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -23,8 +24,28 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 def on_insert_mask(items):
     for i in items:
-        if isinstance(i['pic'],str):
+        # Convert encode string as json
+        if isinstance(i['pic'], str):
             i['pic'] = json.loads(i['pic'])
+        # For attempts on training data, update users training score
+        if i['mode'] == 'try':
+            # Find the user
+            users = app.data.driver.db['user']
+            a = users.find_one({'_id': ObjectId(i['user_id'])})
+            # TODO: Verify submission is novel
+            users.update_one(
+                {'_id': ObjectId(i['user_id'])},
+                {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
+                 '$set': {'ave_score':(a['total_score'] + i['score']) / (a['n_try'] + 1)}}
+            )
+        # Increment user test counter
+        if i['mode'] == 'test':
+            users = app.data.driver.db['user']
+            users.update_one(
+                {'_id': ObjectId(i['user_id'])},
+                {'$inc': {'n_subs': 1, 'n_test': 1}}
+            )
+
 
 app.on_insert_mask += on_insert_mask
 

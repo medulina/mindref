@@ -112,7 +112,7 @@ mask_schema = {
     },
     'mode': {
         'type': 'string',
-        'allowed': ['train', 'truth', 'try'],
+        'allowed': ['test', 'truth', 'try'],
     },
     'score': {
         'type': 'float'
@@ -127,17 +127,36 @@ user_schema = {
         'type': 'string',
         'required': True
     },
+    'avatar': {
+        'type': 'string',
+    },
+    'oa_id': {
+        'type': 'string',
+    },
     'n_subs': {
-        'type': 'integer'
+        'type': 'integer',
+        'default': 0,
+        'readonly': True
+    },
+    'n_try': {
+        'type': 'integer',
+        'default': 0,
+        'readonly': True
+    },
+    'n_test': {
+        'type': 'integer',
+        'default': 0,
+        'readonly': True
     },
     'total_score': {
-        'type': 'float'
+        'type': 'float',
+        'default': 0.0,
+        'readonly': True
     },
     'ave_score': {
-        'type': 'float'
-    },
-    'avatar': {
-        'type': 'media',
+        'type': 'float',
+        'default': 0.0,
+        'readonly': True
     },
 }
 
