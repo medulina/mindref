@@ -172,6 +172,7 @@ settings = {
     'RESOURCE_METHODS': ['GET', 'POST'],
     'ITEM_METHODS': ['GET'],
     'X_DOMAINS': '*',
+    'X_HEADERS': ['Authorization','Content-type'],
     'DOMAIN': {
         'image': {
             'item_title': 'image',
