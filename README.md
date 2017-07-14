@@ -17,7 +17,7 @@ docker-compose up
 Browse to localhost for the swagger api documentation, then promptly ignore that documentation for uploading images. Instead of doing what it says, you'll need to submit images as a form as described [here](https://github.com/pyeve/eve/blob/ab1c6c028a68918df51ba22c7a157fe74ecbcd34/docs/features.rst#file-storage).
 
 Here's an example of posting an image and associated mask with the Python 3 requests library:
-```
+```python
 import requests
 from pathlib import Path
 import json
@@ -43,7 +43,7 @@ if m.exists():
 
 Here we use the id of the image we just uploaded to download an image and it's mask:
 
-```
+```python
 geti_url = url+'image?where={"_id":"%s"}'%image_id
 res_i= requests.get(geti_url)
 
