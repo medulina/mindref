@@ -158,6 +158,19 @@ user_schema = {
         'default': 0.0,
         'readonly': True
     },
+    'roll_scores': {
+        'type': 'list',
+        'schema': {
+            'type': 'float',
+        },
+        'default': [],
+        'readonly': True
+    },
+    'roll_ave_score': {
+        'type': 'float',
+        'default': 0.0,
+        'readonly': True
+    },
 }
 
 settings = {
