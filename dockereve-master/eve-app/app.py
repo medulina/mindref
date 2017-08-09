@@ -42,11 +42,11 @@ def on_insert_mask(items):
             users = app.data.driver.db['user']
             a = users.find_one({'_id': ObjectId(i['user_id'])})
 
-            if len(a['roll_scores']) <= roll_n:
+            if len(a['roll_scores']) < roll_n:
                 updt_rs = a['roll_scores'].copy()
             else:
                 updt_rs = a['roll_scores'][1:].copy()
-            updt_rs.append(a['score'])
+            updt_rs.append(i['score'])
 
             # TODO: Verify submission is novel
             users.update_one(
