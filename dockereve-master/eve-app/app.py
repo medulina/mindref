@@ -41,7 +41,8 @@ def on_insert_mask(items):
             # Find the user
             users = app.data.driver.db['user']
             a = users.find_one({'_id': ObjectId(i['user_id'])})
-
+            if 'roll_scores' not in a.keys():
+                a['roll_scores'] = []
             if len(a['roll_scores']) < roll_n:
                 updt_rs = a['roll_scores'].copy()
             else:

@@ -185,7 +185,10 @@ settings = {
     'RESOURCE_METHODS': ['GET', 'POST'],
     'ITEM_METHODS': ['GET'],
     'X_DOMAINS': '*',
-    'X_HEADERS': ['Authorization','Content-type'],
+    'X_HEADERS': ['X-Requested-With',
+                  'Content-Length',
+                  'Authorization','Content-Type'],
+    'X_ALLOW_CREDENTIALS':True,
     'DOMAIN': {
         'image': {
             'item_title': 'image',
