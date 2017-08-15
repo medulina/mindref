@@ -199,7 +199,9 @@ settings = {
     'X_HEADERS': ['X-Requested-With',
                   'Content-Length',
                   'Authorization',
-                  'Content-Type'],
+                  'Content-Type',
+                  'username',
+                  'password'],
     'X_ALLOW_CREDENTIALS': True,
     'DOMAIN': {
         'image': {
