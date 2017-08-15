@@ -25,7 +25,7 @@ app = Eve(settings=settings, auth=TokenAuth)
 app.register_blueprint(swagger, url_prefix='/docs/api')
 app.add_url_rule('/docs/api', 'eve_swagger.index')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['TOKEN_RE'] =  re.compile('access_token=([a-zA-Z0-9]+)')
+app.config['TOKEN_RE'] = re.compile('access_token=([a-zA-Z0-9]+)')
 app.config.from_envvar('MINDR_CFG_PATH')
 CORS(app)
 
@@ -121,14 +121,11 @@ def authenticate(provider, code):
     return jsonify({'token': token})
 
 
-
 def get_profile(provider, token):
     ur = requests.get(app.config[provider+'_USER_URL'],
                       headers={'authorization': 'token ' + token})
     print(ur.text)
     return ur.json()
-
-
 
 
 if __name__ == '__main__':
