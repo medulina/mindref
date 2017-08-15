@@ -7,6 +7,7 @@ import socket
 import json
 from eve import Eve
 from eve.auth import TokenAuth
+from eve.auth import BasicAuth
 from eve_swagger import swagger
 from settings import settings
 from bson.objectid import ObjectId
@@ -14,12 +15,31 @@ import requests
 import re
 from flask.json import jsonify
 from flask_cors import CORS
+import bcrypt
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
 class TokenAuth(TokenAuth):
     def check_auth(self, token, allowed_roles, resource, method):
         return token == API_TOKEN
+
+class UserAuth(BasicAuth):
+    def check_auth(self, username, password, allowed_roles, resource, method):
+        users = app.data.driver.db['user']
+        user = users.find_one({'_id': ObjectId(username)})
+        return user and user['token'] == password
+
+
+settings['DOMAIN']['mask']['authentication'] = UserAuth
+settings['DOMAIN']['mask']['public_methods'] = ['GET']
+settings['DOMAIN']['mask']['public_item_methods'] = ['GET']
+settings['DOMAIN']['mask']['resource_methods'] = ['GET', 'POST']
+
+settings['DOMAIN']['user']['resource_methods'] = ['GET']
+settings['DOMAIN']['user']['item_methods'] = ['GET']
+
+settings['DOMAIN']['image']['resource_methods'] = ['GET', 'POST']
+
 
 app = Eve(settings=settings, auth=TokenAuth)
 app.register_blueprint(swagger, url_prefix='/docs/api')
@@ -95,6 +115,7 @@ def authenticate(provider, code):
     except IndexError as e:
         return tr.text
     user_dat = get_profile(provider, token)
+    token = bcrypt.hashpw(token, bcrypt.gensalt())
     user_dat['id'] = str(user_dat['id'])
     users = app.data.driver.db['user']
     if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
