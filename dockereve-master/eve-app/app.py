@@ -95,13 +95,14 @@ def authenticate(provider, code):
     except IndexError as e:
         return tr.text
     user_dat = get_profile(provider, token)
+    user_dat['oa_id'] = str(user_dat['oa_id'])
     users = app.data.driver.db['user']
     if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
         users.update_one(
             {'username': user_dat['login'], 'oa_id': user_dat['id']},
             {'$set': {'token': token,
                       'avatar': user_dat['avatar_url']}},
-            upsert=True 
+            upsert=True
             )
     else:
         users.update_one(
@@ -115,9 +116,9 @@ def authenticate(provider, code):
                       'ave_score': 0.0,
                       'roll_scores': [],
                       'roll_ave_score': 0.0}},
-            upsert=True 
+            upsert=True
             )
-    return jsonify({'token':token})
+    return jsonify({'token': token})
 
 
 
