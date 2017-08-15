@@ -10,6 +10,10 @@ from eve.auth import TokenAuth
 from eve_swagger import swagger
 from settings import settings
 from bson.objectid import ObjectId
+import requests
+import re
+from flask.json import jsonify
+from flask_cors import CORS
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -21,6 +25,10 @@ app = Eve(settings=settings, auth=TokenAuth)
 app.register_blueprint(swagger, url_prefix='/docs/api')
 app.add_url_rule('/docs/api', 'eve_swagger.index')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['TOKEN_RE'] =  re.compile('access_token=([a-zA-Z0-9]+)')
+app.config.from_envvar('MINDR_CFG_PATH')
+CORS(app)
+
 roll_n = 5
 
 def get_ave(x):
@@ -73,6 +81,39 @@ app.config['SWAGGER_INFO'] = {
     'title': 'Medulina Web API',
     'version': 'v1'
 }
+
+@app.route('/api/authenticate/<provider>/<code>')
+def authenticate(provider, code):
+    provider = provider.upper()
+    data = {'client_id': app.config[provider+'_CLIENT_ID'],
+            'client_secret': app.config[provider+'_CLIENT_SECRET'],
+            'code': code}
+    tr = requests.post(app.config[provider+'_ACCESS_TOKEN_URL'], data=data)
+    print(tr.text)
+    try:
+        token = re.findall(app.config['TOKEN_RE'], tr.text)[0]
+    except IndexError as e:
+        return tr.text
+    user_dat = get_profile(provider, token)
+    users = app.data.driver.db['user']
+    users.update_one(
+        {'username': user_dat['login'], 'oa_id': user_dat['id']},
+        {'$set': {'token': token,
+                  'avatar': user_dat['avatar_url']}},
+        upsert=True 
+        )
+    return jsonify({'token':token})
+
+
+
+def get_profile(provider, token):
+    ur = requests.get(app.config[provider+'_USER_URL'],
+                      headers={'authorization': 'token ' + token})
+    print(ur.text)
+    return ur.json()
+
+
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')

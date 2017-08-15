@@ -127,6 +127,9 @@ user_schema = {
         'type': 'string',
         'required': True
     },
+    'token': {
+        'type': 'string'
+    },
     'avatar': {
         'type': 'string',
     },
