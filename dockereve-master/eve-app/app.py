@@ -96,12 +96,27 @@ def authenticate(provider, code):
         return tr.text
     user_dat = get_profile(provider, token)
     users = app.data.driver.db['user']
-    users.update_one(
-        {'username': user_dat['login'], 'oa_id': user_dat['id']},
-        {'$set': {'token': token,
-                  'avatar': user_dat['avatar_url']}},
-        upsert=True 
-        )
+    if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
+        users.update_one(
+            {'username': user_dat['login'], 'oa_id': user_dat['id']},
+            {'$set': {'token': token,
+                      'avatar': user_dat['avatar_url']}},
+            upsert=True 
+            )
+    else:
+        users.update_one(
+            {'username': user_dat['login'], 'oa_id': user_dat['id']},
+            {'$set': {'token': token,
+                      'avatar': user_dat['avatar_url'],
+                      'n_subs': 0,
+                      'n_try': 0,
+                      'n_test': 0,
+                      'total_score': 0.0,
+                      'ave_score': 0.0,
+                      'roll_scores': [],
+                      'roll_ave_score': 0.0}},
+            upsert=True 
+            )
     return jsonify({'token':token})
 
 
