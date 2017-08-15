@@ -120,6 +120,14 @@ mask_schema = {
     'pic': {
         'validator': mask_json,
     },
+    'user_agent': {
+        'type': 'string'
+    },
+    'resolution': {
+        'type': 'list',
+        'schema': {
+            'type': 'float',
+            }}
 }
 
 user_schema = {
@@ -190,8 +198,9 @@ settings = {
     'X_DOMAINS': '*',
     'X_HEADERS': ['X-Requested-With',
                   'Content-Length',
-                  'Authorization','Content-Type'],
-    'X_ALLOW_CREDENTIALS':True,
+                  'Authorization', 
+                  'Content-Type'],
+    'X_ALLOW_CREDENTIALS': True,
     'DOMAIN': {
         'image': {
             'item_title': 'image',
