@@ -115,7 +115,7 @@ def authenticate(provider, code):
     except IndexError as e:
         return tr.text
     user_dat = get_profile(provider, token)
-    token = bcrypt.hashpw(token.encode(), bcrypt.gensalt())
+    token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
     user_dat['id'] = str(user_dat['id'])
     users = app.data.driver.db['user']
     if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
