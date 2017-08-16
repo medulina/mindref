@@ -30,7 +30,7 @@ class UserAuth(BasicAuth):
         return user and user['token'] == password
 
 
-settings['DOMAIN']['mask']['authentication'] = UserAuth
+#settings['DOMAIN']['mask']['authentication'] = UserAuth
 settings['DOMAIN']['mask']['public_methods'] = ['GET']
 settings['DOMAIN']['mask']['public_item_methods'] = ['GET']
 settings['DOMAIN']['mask']['resource_methods'] = ['GET', 'POST']
