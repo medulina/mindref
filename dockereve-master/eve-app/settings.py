@@ -94,6 +94,9 @@ image_schema = {
     'image_hash': {
         'type': 'string',
         'unique': True
+    },
+    'context': {
+        'type': 'media'
     }
 }
 
@@ -135,7 +138,7 @@ mask_schema = {
             'type': 'float',
             }}
 }
-
+    
 user_schema = {
     'username': {
         'type': 'string',
@@ -190,6 +193,56 @@ user_schema = {
     },
 }
 
+manager_schema = {
+    'username': {
+        'type': 'string',
+        'required': True
+    },
+    'token': {
+        'type': 'string'
+    },
+    'avatar': {
+        'type': 'string',
+    },
+    'oa_id': {
+        'type': 'string',
+    }
+}
+
+project_schema = {
+    'name': {
+        'type': 'string',
+        'unique': True
+    },
+    'url': {
+        'type': 'string'
+    },
+    'images': {
+        'type': 'list',
+        'schema': {
+            'image_id': {
+                'type': 'objectid',
+                'data_relation': {
+                    'resource': 'image',
+                    'embeddable': True
+                },
+            }
+        }
+    },
+    'managers': {
+        'type': 'list',
+        'schema': {
+            'manager_id': {
+                'type': 'objectid',
+                'data_relation': {
+                    'resource': 'manager',
+                    'embeddable': True
+                },
+            }
+        }
+    }
+}
+
 settings = {
     'URL_PREFIX': 'api',
     'API_VERSION': 'v1',
@@ -219,6 +272,12 @@ settings = {
         'user': {
             'item_title': 'user',
         },
+        'manager': {
+            'item_title': 'manager',
+        },
+        'project': {
+            'item_title': 'project',
+        },
 
     }
 }
@@ -226,4 +285,5 @@ settings = {
 settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
-
+settings['DOMAIN']['manager']['schema'] = deepcopy(manager_schema)
+settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)

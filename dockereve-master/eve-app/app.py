@@ -141,6 +141,8 @@ def authenticate(provider, code):
             )
     return jsonify({'token': token})
 
+@app.route('/api/logout/')
+
 
 def get_profile(provider, token):
     ur = requests.get(app.config[provider+'_USER_URL'],
