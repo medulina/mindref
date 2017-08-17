@@ -40,6 +40,11 @@ settings['DOMAIN']['user']['item_methods'] = ['GET']
 
 settings['DOMAIN']['image']['resource_methods'] = ['GET', 'POST']
 
+settings['DOMAIN']['project']['resource_methods'] = ['GET', 'POST']
+
+settings['DOMAIN']['researcher']['resource_methods'] = ['GET']
+settings['DOMAIN']['researcher']['item_methods'] = ['GET']
+
 
 app = Eve(settings=settings, auth=TokenAuth)
 app.register_blueprint(swagger, url_prefix='/docs/api')
@@ -139,6 +144,52 @@ def authenticate(provider, code):
                       'roll_ave_score': 0.0}},
             upsert=True
             )
+    return jsonify({'token': token})
+
+@app.route('/api/authenticatenew/<logintype>/<provider>/<code>')
+def authenticatenew(logintype, provider, code):
+    provider = provider.upper()
+    logintype = logintype.lower()
+    data = {'client_id': app.config[provider+'_CLIENT_ID'],
+            'client_secret': app.config[provider+'_CLIENT_SECRET'],
+            'code': code}
+    tr = requests.post(app.config[provider+'_ACCESS_TOKEN_URL'], data=data)
+    print(tr.text)
+    try:
+        token = re.findall(app.config['TOKEN_RE'], tr.text)[0]
+    except IndexError as e:
+        return tr.text
+    user_dat = get_profile(provider, token)
+    token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
+    user_dat['id'] = str(user_dat['id'])
+    users = app.data.driver.db[logintype]
+    if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
+        users.update_one(
+            {'username': user_dat['login'], 'oa_id': user_dat['id']},
+            {'$set': {'token': token,
+                      'avatar': user_dat['avatar_url']}},
+            upsert=True
+            )
+    elif logintype == 'user':
+        users.update_one(
+            {'username': user_dat['login'], 'oa_id': user_dat['id']},
+            {'$set': {'token': token,
+                      'avatar': user_dat['avatar_url'],
+                      'n_subs': 0,
+                      'n_try': 0,
+                      'n_test': 0,
+                      'total_score': 0.0,
+                      'ave_score': 0.0,
+                      'roll_scores': [],
+                      'roll_ave_score': 0.0}},
+            upsert=True
+            )
+    elif logintype == 'researcher':
+        users.update_one(
+            {'username': user_dat['login'], 'oa_id': user_dat['id']},
+            {'$set': {'token': token,
+                      'avatar': user_dat['avatar_url']}},
+            upsert=True)
     return jsonify({'token': token})
 
 @app.route('/api/logout/')
