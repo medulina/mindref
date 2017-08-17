@@ -16,6 +16,7 @@ import re
 from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
+from np.random import randint
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -54,7 +55,11 @@ app.config['TOKEN_RE'] = re.compile('access_token=([a-zA-Z0-9]+)')
 app.config.from_envvar('MINDR_CFG_PATH')
 CORS(app)
 
-roll_n = 5
+roll_n = 10
+
+# variables for image selection
+test_thresh = 0.75
+
 
 def get_ave(x):
     if len(x) == 0:
@@ -86,9 +91,9 @@ def on_insert_mask(items):
             users.update_one(
                 {'_id': ObjectId(i['user_id'])},
                 {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
-                 '$set': {'ave_score':(a['total_score'] + i['score']) / (a['n_try'] + 1),
-                          'roll_scores':updt_rs,
-                          'roll_ave_score':get_ave(updt_rs)}}
+                 '$set': {'ave_score': (a['total_score'] + i['score']) / (a['n_try'] + 1),
+                          'roll_scores': updt_rs,
+                          'roll_ave_score': get_ave(updt_rs)}}
             )
         # Increment user test counter
         if i['mode'] == 'test':
@@ -98,6 +103,8 @@ def on_insert_mask(items):
                 {'$inc': {'n_subs': 1, 'n_test': 1}}
             )
 
+def pre_image_get_callback(request, lookup):
+    user_id = request.args['user_id']
 
 app.on_insert_mask += on_insert_mask
 
