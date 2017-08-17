@@ -99,6 +99,7 @@ mask_schema = {
         'required': True,
         'data_relation': {
             'resource': 'image',
+            'field': '_id',
             'embeddable': True
         },
     },
@@ -107,6 +108,7 @@ mask_schema = {
         #'required': True,
         'data_relation': {
             'resource': 'user',
+            'field':'_id',
             'embeddable': True
         },
     },
