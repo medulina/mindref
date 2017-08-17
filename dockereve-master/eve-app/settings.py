@@ -193,7 +193,7 @@ user_schema = {
     },
 }
 
-manager_schema = {
+researcher_schema = {
     'username': {
         'type': 'string',
         'required': True
@@ -272,8 +272,8 @@ settings = {
         'user': {
             'item_title': 'user',
         },
-        'manager': {
-            'item_title': 'manager',
+        'researcher': {
+            'item_title': 'researcher',
         },
         'project': {
             'item_title': 'project',
@@ -285,5 +285,5 @@ settings = {
 settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
-settings['DOMAIN']['manager']['schema'] = deepcopy(manager_schema)
+settings['DOMAIN']['researcher']['schema'] = deepcopy(researcher_schema)
 settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)
