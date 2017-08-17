@@ -91,6 +91,10 @@ image_schema = {
     'pic': {
         'type': 'media',
     },
+    'image_hash': {
+        'type': 'string',
+        'unique': True
+    }
 }
 
 mask_schema = {
