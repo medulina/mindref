@@ -136,7 +136,12 @@ mask_schema = {
         'type': 'list',
         'schema': {
             'type': 'float',
-            }}
+            }},
+    'task': {
+        'type': 'string',
+        'minlength': 1,
+        'maxlength': 50,
+    }
 }
     
 user_schema = {

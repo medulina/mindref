@@ -3,6 +3,7 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 
 import os
+import sys
 import socket
 import json
 from eve import Eve
@@ -11,12 +12,14 @@ from eve.auth import BasicAuth
 from eve_swagger import swagger
 from settings import settings
 from bson.objectid import ObjectId
+import bson
 import requests
 import re
 from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
-from np.random import randint
+from numpy.random import randint
+import pandas as pd
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -59,7 +62,8 @@ roll_n = 10
 
 # variables for image selection
 test_thresh = 0.75
-
+test_per_train = 5
+train_repeat = 10
 
 def get_ave(x):
     if len(x) == 0:
@@ -103,10 +107,92 @@ def on_insert_mask(items):
                 {'$inc': {'n_subs': 1, 'n_test': 1}}
             )
 
+
+def get_seen_images(user_id, mode, task):
+    masks = app.data.driver.db['mask']
+    pipeline = [{'$match': {'user_id': ObjectId(user_id),
+                            'mode': mode,
+                            'task': task}},
+                {'$group': {'_id': '$image_id', 'count': {'$sum': 1}}}]
+
+    seen_images = pd.DataFrame([r for r in masks.aggregate(pipeline)], columns=['_id', 'count'])
+    seen_ids = list(seen_images['_id'].values)
+    return seen_images, seen_ids
+
+
+TASK_RE = re.compile('"task":"([a-zA-Z0-9]+)"')
+
+
 def pre_image_get_callback(request, lookup):
-    user_id = request.args['user_id']
+    """Decide if the user will get a train or test image
+    if train, decide if user will get a repeated image,
+    if not repeated, try to give the user a novel training image"""
+
+    try:
+        user_id = request.args['user_id']
+        task = re.findall(TASK_RE, request.args['where'])[0]
+    except KeyError:
+        # raise type(e)(str(e)+request.args['where'])
+        return None
+
+    users = app.data.driver.db['user']
+    images = app.data.driver.db['image']
+    a = users.find_one({'_id': ObjectId(user_id)})
+    # Decide if user will get a train or test image
+    if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train):
+        # Getting a novel test image if possible
+        mode = 'test'
+        imode = 'test'
+        seen_images, seen_ids = get_seen_images(user_id, mode, task)
+
+        unseen_images = images.find({'_id': {'$nin': seen_ids},
+                                     'mode': imode,
+                                     'task': task},
+                                    {'_id': 1})
+        unseen_images = [r['_id'] for r in unseen_images]
+
+        if len(unseen_images) > 0:
+            lookup['_id'] = {'$nin': seen_ids}
+            lookup['mode'] = imode
+        else:
+            least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
+            lookup['_id'] = {'$in': least_seen}
+            lookup['mode'] = imode
+
+    elif randint(1, train_repeat+1) == train_repeat:
+        # Getting a repeated training image
+        mode = 'try'
+        imode = 'train'
+        seen_images, seen_ids = get_seen_images(user_id, mode, task)
+        if len(seen_ids) > 0:
+            lookup['_id'] = {'$in': seen_ids}
+            lookup['mode'] = imode
+
+    else:
+        # Getting a novel training image if possible
+        # If not, get a training image they've seen the fewest number of times
+        # Find the images a user has seen
+        mode = 'try'
+        imode = 'train'
+        seen_images, seen_ids = get_seen_images(user_id, mode, task)
+
+        unseen_images = images.find({'_id': {'$nin': seen_ids},
+                                     'mode': imode,
+                                     'task': task},
+                                    {'_id': 1})
+        unseen_images = [r['_id'] for r in unseen_images]
+
+        if len(unseen_images) > 0:
+            lookup['_id'] = {'$nin': seen_ids}
+            lookup['mode'] = imode
+        else:
+            least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
+            lookup['_id'] = {'$in': least_seen}
+            lookup['mode'] = imode
+
 
 app.on_insert_mask += on_insert_mask
+app.on_pre_GET_image += pre_image_get_callback
 
 # required. See http://swagger.io/specification/#infoObject for details.
 app.config['SWAGGER_INFO'] = {
