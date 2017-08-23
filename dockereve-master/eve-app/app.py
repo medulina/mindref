@@ -129,6 +129,7 @@ def pre_image_get_callback(request, lookup):
 
     try:
         user_id = request.args['user_id']
+        token = request.args['token']
         task = re.findall(TASK_RE, request.args['where'])[0]
     except KeyError:
         # raise type(e)(str(e)+request.args['where'])
@@ -136,7 +137,7 @@ def pre_image_get_callback(request, lookup):
 
     users = app.data.driver.db['user']
     images = app.data.driver.db['image']
-    a = users.find_one({'_id': ObjectId(user_id)})
+    a = users.find_one({'_id': ObjectId(user_id), 'token': token})
     # Decide if user will get a train or test image
     if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train):
         # Getting a novel test image if possible

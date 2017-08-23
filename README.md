@@ -50,3 +50,33 @@ res_i= requests.get(geti_url)
 getm_url = url+'mask?where={"image_id":"%s"}'%image_id
 res_m= requests.get(getm_url)
 ```
+
+
+If you want to get statistics for all of the masks submitted for a training image send a get request like so:
+```pthon
+get_aggmasks = url+'maskagg?aggregate={"$image_search":"%s"}'%image_id
+res_aggm = requests.get(get_aggmasks)
+```
+This will return a json response like so:
+```
+{'_items': [{'_id': '599d87d0d52c9f00099b2aab',
+   'avescore': 0.1,
+   'nattempts': 1,
+   'nusers': 1,
+   'sumscore': 0.1}]}
+   ```
+
+Backend selection logic is now tentatively implemented. It depends on several variables being available in the config file:
+```
+ROLL_N = 10
+TEST_THRESH = 0.75
+TEST_PER_TRAIN = 5
+TRAIN_REPEAT = 10
+```
+If user_id and token parameters are set as parameters on the get item request, the backend will first decide if the user's rolling average score is above threshold. If it is and they don't randomly get assigned to training based on the test_per_train setting, then it will try to give them a novel test image, otherwise giving them an image seen the fewest number of times. If they are selected to get a training image, then they will get a repeated training image based on the train_repeat parameter or a novel or least seen training image. 
+
+The reqeust should look something like this:
+```python
+geti_url = url+'image?where={"task":"dev"}&user_id=%s&token=%s'%(uid,token)
+res_i= requests.get(geti_url)
+```
