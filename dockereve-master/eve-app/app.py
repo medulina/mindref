@@ -6,15 +6,14 @@ import os
 import sys
 import socket
 import json
+import re
+import requests
 from eve import Eve
 from eve.auth import TokenAuth
 from eve.auth import BasicAuth
 from eve_swagger import swagger
 from settings import settings
 from bson.objectid import ObjectId
-import bson
-import requests
-import re
 from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
