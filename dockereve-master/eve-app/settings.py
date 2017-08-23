@@ -19,6 +19,7 @@
 import os
 import json
 from copy import deepcopy
+from bson.objectid import ObjectId
 
 
 def key_type(d, t=int):
@@ -115,7 +116,7 @@ mask_schema = {
         #'required': True,
         'data_relation': {
             'resource': 'user',
-            'field':'_id',
+            'field': '_id',
             'embeddable': True
         },
     },
@@ -143,7 +144,9 @@ mask_schema = {
         'maxlength': 50,
     }
 }
-    
+
+mask_agg = {}
+
 user_schema = {
     'username': {
         'type': 'string',
@@ -283,6 +286,9 @@ settings = {
         'project': {
             'item_title': 'project',
         },
+        'maskagg': {
+            'item_title': 'maskagg'
+        }
 
     }
 }
@@ -292,3 +298,34 @@ settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
 settings['DOMAIN']['researcher']['schema'] = deepcopy(researcher_schema)
 settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)
+
+# Add aggregation endpoint for masks
+settings['DOMAIN']['maskagg']['datasource'] = {
+    'source': 'mask',
+    'aggregation': {
+        'pipeline': [
+            {'$match': {'image_id': '$image_search',
+                        'mode': 'try'}},
+            {'$group': {
+                '_id': {
+                    'image_id': '$image_id',
+                    'user_id': '$user_id'
+                },
+                'count': {'$sum': 1},
+                'sumscore': {'$sum': '$score'}
+                }},
+            {'$group': {
+                '_id':  '$_id.image_id',
+                'nattempts': {'$sum': '$count'},
+                'nusers': {'$sum': 1},
+                'sumscore': {'$sum': '$sumscore'}
+                }},
+            {'$project': {
+                'nattempts': 1,
+                'nusers': 1,
+                'sumscore': 1,
+                'avescore': {'$divide': ['$sumscore', '$nattempts']}
+                }}
+        ]
+    }
+}
