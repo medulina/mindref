@@ -57,12 +57,12 @@ app.config['TOKEN_RE'] = re.compile('access_token=([a-zA-Z0-9]+)')
 app.config.from_envvar('MINDR_CFG_PATH')
 CORS(app)
 
-roll_n = 10
+roll_n = app.config['ROLL_N']
 
 # variables for image selection
-test_thresh = 0.75
-test_per_train = 5
-train_repeat = 10
+test_thresh = app.config['TEST_THRESH']
+test_per_train = app.config['TEST_PER_TRAIN']
+train_repeat = app.config['TRAIN_REPEAT']
 
 def get_ave(x):
     if len(x) == 0:
