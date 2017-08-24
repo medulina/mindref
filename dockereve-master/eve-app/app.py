@@ -8,6 +8,10 @@ import socket
 import json
 import re
 import requests
+import pandas as pd
+import base64
+from io import BytesIO
+from copy import deepcopy
 from eve import Eve
 from eve.auth import TokenAuth
 from eve.auth import BasicAuth
@@ -18,7 +22,7 @@ from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
 from numpy.random import randint
-import pandas as pd
+from PIL import Image
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -71,6 +75,60 @@ def get_ave(x):
     for xi in x:
         total += xi
     return total/len(x)
+
+def get_cfx_mat(truth, attempt, totaln):
+    x = deepcopy(truth)
+    y = deepcopy(attempt)
+    cm = {}
+    rt = 0
+    # Run through truth and add to confusion matrix
+    for ik, iv in x.items():
+        while len(iv) > 0:
+            jk, jv = iv.popitem()
+            rt += 1
+            try:
+                yjv = y[ik].pop(jk)
+            except KeyError:
+                # Change this once we're getting sent the complete try masks
+                yjv = jv
+            try:
+                cm[jv][yjv] += 1
+            except KeyError:
+                try:
+                    cm[jv][yjv] = 1
+                except KeyError:
+                    cm[jv] = {}
+                    cm[jv][yjv] = 1
+    # Run through remaining items in attempt and update confusion matrix
+    for ik, iv in y.items():
+        while len(iv) > 0:
+            jk, yjv = iv.popitem()
+            rt += 1
+            try:
+                cm[0][yjv] += 1
+            except KeyError:
+                try:
+                    cm[0][yjv] = 1
+                except KeyError:
+                    cm[0] = {}
+                    cm[0][yjv] = 1
+    cm[0][0] = totaln-rt
+    return cm
+
+
+def get_dice(cm):
+    """Given a confusion matrix in dictionary form, return dice coefficient"""
+    tp = cm[1][1]
+    fp = cm[0][1]
+    fn = cm[1][0]
+    return (2 * tp)/(2 * tp + fp + fn)
+
+
+def get_totaln(image_id):
+    images = app.data.driver.db['image']
+    img = images.find_one({'_id': ObjectId('image_id')})
+    img = Image.open(BytesIO(base64.b64decode(img['pic'])))
+    return img.height * img.width
 
 def on_insert_mask(items):
     for i in items:
