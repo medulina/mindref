@@ -172,7 +172,6 @@ def get_seen_images(user_id, mode, task):
                             'mode': mode,
                             'task': task}},
                 {'$group': {'_id': '$image_id', 'count': {'$sum': 1}}}]
-
     seen_images = pd.DataFrame([r for r in masks.aggregate(pipeline)], columns=['_id', 'count'])
     seen_ids = list(seen_images['_id'].values)
     return seen_images, seen_ids
@@ -199,16 +198,15 @@ def pre_image_get_callback(request, lookup):
     users = app.data.driver.db['user']
     images = app.data.driver.db['image']
     a = users.find_one({'_id': ObjectId(user_id), 'token': token})
+    seen_test_images, seen_test_ids = get_seen_images(user_id, 'test', 'task')
     # Decide if user will get a train or test image
-    if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train):
-        raise IndexError("test")
+    if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids > 0)):
 
         # Getting a novel test image if possible
         mode = 'test'
         imode = 'test'
-        seen_images, seen_ids = get_seen_images(user_id, mode, task)
 
-        unseen_images = images.find({'_id': {'$nin': seen_ids},
+        unseen_images = images.find({'_id': {'$nin': seen_test_ids},
                                      'mode': imode,
                                      'task': task},
                                     {'_id': 1})
@@ -218,7 +216,7 @@ def pre_image_get_callback(request, lookup):
             lookup['_id'] = {'$nin': unseen_images}
             lookup['mode'] = imode
         else:
-            least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
+            least_seen = list(seen_test_images.loc[seen_test_images['count'] == seen_test_images['count'].min(), '_id'].values)
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
 
@@ -228,11 +226,9 @@ def pre_image_get_callback(request, lookup):
         imode = 'train'
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
         if len(seen_ids) > 0:
-            raise Warning("train repeated seen_ids gt 0"+str(seen_ids))
             lookup['_id'] = {'$in': seen_ids}
             lookup['mode'] = imode
         else:
-            raise Warning("train repeated seen_ids eq 0"+str(lookup))
             lookup['mode'] = imode
 
     else:
@@ -242,7 +238,6 @@ def pre_image_get_callback(request, lookup):
         mode = 'try'
         imode = 'train'
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
-        raise Warning("what's going on with seen images"+str(seen_ids))
         unseen_images = images.find({'_id': {'$nin': seen_ids},
                                      'mode': imode,
                                      'task': task},
@@ -250,15 +245,13 @@ def pre_image_get_callback(request, lookup):
         unseen_images = [r['_id'] for r in unseen_images]
 
         if len(unseen_images) > 0:
-            raise Warning("train new unseen gt 0"+str(unseen_images))
             lookup['_id'] = {'$nin': seen_ids}
             lookup['mode'] = imode
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
-            raise Warning("train new unseen eq 0"+str(least_seen))
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
-    
+  
 
 
 app.on_insert_mask += on_insert_mask
