@@ -252,7 +252,7 @@ def pre_image_get_callback(request, lookup):
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
-  
+    raise Warning(str(lookup))
 
 
 app.on_insert_mask += on_insert_mask
