@@ -213,7 +213,7 @@ def pre_image_get_callback(request, lookup):
         unseen_images = [r['_id'] for r in unseen_images]
 
         if len(unseen_images) > 0:
-            lookup['_id'] = {'$nin': seen_ids}
+            lookup['_id'] = {'$nin': unseen_images}
             lookup['mode'] = imode
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
