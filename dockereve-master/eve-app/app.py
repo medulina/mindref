@@ -201,6 +201,8 @@ def pre_image_get_callback(request, lookup):
     a = users.find_one({'_id': ObjectId(user_id), 'token': token})
     # Decide if user will get a train or test image
     if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train):
+        raise IndexError("test")
+
         # Getting a novel test image if possible
         mode = 'test'
         imode = 'test'
@@ -221,6 +223,8 @@ def pre_image_get_callback(request, lookup):
             lookup['mode'] = imode
 
     elif randint(1, train_repeat+1) == train_repeat:
+        raise IndexError("train_repeat")
+
         # Getting a repeated training image
         mode = 'try'
         imode = 'train'
@@ -235,6 +239,7 @@ def pre_image_get_callback(request, lookup):
         # Find the images a user has seen
         mode = 'try'
         imode = 'train'
+        raise IndexError("train_new")
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
 
         unseen_images = images.find({'_id': {'$nin': seen_ids},
@@ -250,8 +255,7 @@ def pre_image_get_callback(request, lookup):
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
-    raise IndexError(lookup)
-
+    
 
 
 app.on_insert_mask += on_insert_mask
