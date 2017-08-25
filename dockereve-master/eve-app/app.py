@@ -200,7 +200,7 @@ def pre_image_get_callback(request, lookup):
     a = users.find_one({'_id': ObjectId(user_id), 'token': token})
     seen_test_images, seen_test_ids = get_seen_images(user_id, 'test', 'task')
     # Decide if user will get a train or test image
-    if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids > 0)):
+    if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids) > 0):
 
         # Getting a novel test image if possible
         mode = 'test'
