@@ -174,7 +174,6 @@ def get_seen_images(user_id, mode, task):
                 {'$group': {'_id': '$image_id', 'count': {'$sum': 1}}}]
     seen_images = pd.DataFrame([r for r in masks.aggregate(pipeline)], columns=['_id', 'count'])
     seen_ids = list(seen_images['_id'].values)
-    raise Warning('seen_images:'+str(seen_images))
     return seen_images, seen_ids
 
 
@@ -226,6 +225,8 @@ def pre_image_get_callback(request, lookup):
         mode = 'try'
         imode = 'train'
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
+        raise Warning('seen_images:'+str(seen_images)+','+task)
+
         if len(seen_ids) > 0:
             lookup['_id'] = {'$in': seen_ids}
             lookup['mode'] = imode
