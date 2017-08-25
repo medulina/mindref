@@ -21,7 +21,7 @@ from bson.objectid import ObjectId
 from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
-from numpy.random import randint
+from numpy.random import randint,choice
 from PIL import Image
 
 API_TOKEN = os.environ.get("API_TOKEN")
@@ -213,11 +213,11 @@ def pre_image_get_callback(request, lookup):
         unseen_images = [r['_id'] for r in unseen_images]
 
         if len(unseen_images) > 0:
-            lookup['_id'] = {'$in': unseen_images}
+            lookup['_id'] = ObjectId(choice(unseen_images, 1)[0])
             lookup['mode'] = imode
         else:
             least_seen = list(seen_test_images.loc[seen_test_images['count'] == seen_test_images['count'].min(), '_id'].values)
-            lookup['_id'] = {'$in': least_seen}
+            lookup['_id'] = ObjectId(choice(least_seen, 1)[0])
             lookup['mode'] = imode
 
     elif randint(1, train_repeat+1) == train_repeat:
@@ -227,7 +227,7 @@ def pre_image_get_callback(request, lookup):
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
 
         if len(seen_ids) > 0:
-            lookup['_id'] = {'$in': seen_ids}
+            lookup['_id'] = ObjectId(choice(seen_ids, 1)[0])
             lookup['mode'] = imode
         else:
             lookup['mode'] = imode
@@ -245,13 +245,13 @@ def pre_image_get_callback(request, lookup):
                                     {'_id': 1})
         unseen_images = [r['_id'] for r in unseen_images]
         if len(unseen_images) > 0:
-            lookup['_id'] = {'$in': unseen_images}
+            lookup['_id'] = choice(unseen_images, 1)[0]
             lookup['mode'] = imode
         elif len(seen_ids) == 0:
             raise Exception("Seen Ids and Unseen Ids are both empty. FML.")
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
-            lookup['_id'] = {'$in': least_seen}
+            lookup['_id'] = choice(least_seen, 1)[0]
             lookup['mode'] = imode
     #raise Warning(str(lookup))
 
