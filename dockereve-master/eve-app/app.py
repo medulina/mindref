@@ -58,6 +58,7 @@ app.register_blueprint(swagger, url_prefix='/docs/api')
 app.add_url_rule('/docs/api', 'eve_swagger.index')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['TOKEN_RE'] = re.compile('access_token=([a-zA-Z0-9]+)')
+app.config['TASK_RE'] = re.compile('"task":"([a-zA-Z0-9]+)"')
 app.config.from_envvar('MINDR_CFG_PATH')
 CORS(app)
 
@@ -177,7 +178,6 @@ def get_seen_images(user_id, mode, task):
     return seen_images, seen_ids
 
 
-TASK_RE = re.compile('"task":"([a-zA-Z0-9]+)"')
 
 
 def pre_image_get_callback(request, lookup):
