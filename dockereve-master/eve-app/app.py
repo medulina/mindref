@@ -199,6 +199,7 @@ def pre_image_get_callback(request, lookup):
     images = app.data.driver.db['image']
     a = users.find_one({'_id': ObjectId(user_id), 'token': token})
     seen_test_images, seen_test_ids = get_seen_images(user_id, 'test', task)
+
     # Decide if user will get a train or test image
     if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids) > 0):
 
@@ -244,15 +245,15 @@ def pre_image_get_callback(request, lookup):
                                      'task': task},
                                     {'_id': 1})
         unseen_images = [r['_id'] for r in unseen_images]
-        raise Warning("seen:",str(seen_images),"\nunseen:",str(unseen_images))
         if len(unseen_images) > 0:
             lookup['_id'] = {'$nin': unseen_images}
             lookup['mode'] = imode
+        elif len(seen_ids) == 0:
+            raise Exception("Seen Ids and Unseen Ids are both empty. FML.")
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
-
 
 
 app.on_insert_mask += on_insert_mask
