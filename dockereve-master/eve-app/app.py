@@ -174,6 +174,7 @@ def get_seen_images(user_id, mode, task):
                 {'$group': {'_id': '$image_id', 'count': {'$sum': 1}}}]
     seen_images = pd.DataFrame([r for r in masks.aggregate(pipeline)], columns=['_id', 'count'])
     seen_ids = list(seen_images['_id'].values)
+    raise Warning('seen_images:'+str(seen_images))
     return seen_images, seen_ids
 
 
