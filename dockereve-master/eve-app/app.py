@@ -223,17 +223,16 @@ def pre_image_get_callback(request, lookup):
             lookup['mode'] = imode
 
     elif randint(1, train_repeat+1) == train_repeat:
-        raise IndexError("train_repeat")
-
         # Getting a repeated training image
         mode = 'try'
         imode = 'train'
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
         if len(seen_ids) > 0:
-            Warning("train repeated seen_ids gt 0"+str(seen_ids))
+            IndexError("train repeated seen_ids gt 0"+str(seen_ids))
             lookup['_id'] = {'$in': seen_ids}
             lookup['mode'] = imode
         else:
+            IndexError("train repeated seen_ids eq 0"+str(lookup))
             lookup['mode'] = imode
 
     else:
@@ -251,12 +250,12 @@ def pre_image_get_callback(request, lookup):
         unseen_images = [r['_id'] for r in unseen_images]
 
         if len(unseen_images) > 0:
-            Warning("train new unseen gt 0"+str(unseen_images))
+            IndexError("train new unseen gt 0"+str(unseen_images))
             lookup['_id'] = {'$nin': seen_ids}
             lookup['mode'] = imode
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
-            Warning("train new unseen eq 0"+str(least_seen))
+            IndexError("train new unseen eq 0"+str(least_seen))
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
     
