@@ -178,7 +178,6 @@ def get_seen_images(user_id, mode, task):
 
 
 
-
 def pre_image_get_callback(request, lookup):
     """Decide if the user will get a train or test image
     if train, decide if user will get a repeated image,
@@ -254,6 +253,7 @@ def pre_image_get_callback(request, lookup):
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
+    raise Warning(str(lookup))
 
 
 app.on_insert_mask += on_insert_mask
