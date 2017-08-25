@@ -190,7 +190,7 @@ def pre_image_get_callback(request, lookup):
         token = request.args['token']
         try:
             task = re.findall(app.config['TASK_RE'], request.args['where'])[0]
-        except IndexError:
+        except IndexError as e:
             raise type(e)(str(e)+request.args['where'])
     except KeyError:
         # raise type(e)(str(e)+request.args['where'])
