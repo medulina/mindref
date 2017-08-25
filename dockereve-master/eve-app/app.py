@@ -188,7 +188,7 @@ def pre_image_get_callback(request, lookup):
     try:
         user_id = request.args['user_id']
         token = request.args['token']
-        task = re.findall(TASK_RE, request.args['where'])[0]
+        task = re.findall(app.config['TASK_RE'], request.args['where'])[0]
     except KeyError:
         # raise type(e)(str(e)+request.args['where'])
         return None
