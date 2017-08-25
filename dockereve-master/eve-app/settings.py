@@ -68,11 +68,13 @@ image_schema = {
     'mode': {
         'type': 'string',
         'allowed': ['test', 'train'],
+        'required': True
     },
     'task': {
         'type': 'string',
         'minlength': 1,
         'maxlength': 50,
+        'required': True
     },
     'subject': {
         'type': 'string',
@@ -123,6 +125,7 @@ mask_schema = {
     'mode': {
         'type': 'string',
         'allowed': ['test', 'truth', 'try'],
+        'required': True
     },
     'score': {
         'type': 'float'
@@ -142,6 +145,7 @@ mask_schema = {
         'type': 'string',
         'minlength': 1,
         'maxlength': 50,
+        'required': True
     }
 }
 
