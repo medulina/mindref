@@ -244,7 +244,7 @@ def pre_image_get_callback(request, lookup):
                                      'task': task},
                                     {'_id': 1})
         unseen_images = [r['_id'] for r in unseen_images]
-        raise Warning("seen:",str(seen_images),"\nunseen:"str(unseen_images))
+        raise Warning("seen:",str(seen_images),"\nunseen:",str(unseen_images))
         if len(unseen_images) > 0:
             lookup['_id'] = {'$nin': unseen_images}
             lookup['mode'] = imode
