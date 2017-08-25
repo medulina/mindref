@@ -230,7 +230,10 @@ def pre_image_get_callback(request, lookup):
         imode = 'train'
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
         if len(seen_ids) > 0:
+            Warning("train repeated seen_ids gt 0"+str(seen_ids))
             lookup['_id'] = {'$in': seen_ids}
+            lookup['mode'] = imode
+        else:
             lookup['mode'] = imode
 
     else:
@@ -239,7 +242,6 @@ def pre_image_get_callback(request, lookup):
         # Find the images a user has seen
         mode = 'try'
         imode = 'train'
-        raise IndexError("train_new")
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
 
         unseen_images = images.find({'_id': {'$nin': seen_ids},
@@ -249,10 +251,12 @@ def pre_image_get_callback(request, lookup):
         unseen_images = [r['_id'] for r in unseen_images]
 
         if len(unseen_images) > 0:
+            Warning("train new unseen gt 0"+str(unseen_images))
             lookup['_id'] = {'$nin': seen_ids}
             lookup['mode'] = imode
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
+            Warning("train new unseen eq 0"+str(least_seen))
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
     
