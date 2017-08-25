@@ -213,7 +213,7 @@ def pre_image_get_callback(request, lookup):
         unseen_images = [r['_id'] for r in unseen_images]
 
         if len(unseen_images) > 0:
-            lookup['_id'] = {'$nin': unseen_images}
+            lookup['_id'] = {'$in': unseen_images}
             lookup['mode'] = imode
         else:
             least_seen = list(seen_test_images.loc[seen_test_images['count'] == seen_test_images['count'].min(), '_id'].values)
@@ -245,7 +245,7 @@ def pre_image_get_callback(request, lookup):
                                     {'_id': 1})
         unseen_images = [r['_id'] for r in unseen_images]
         if len(unseen_images) > 0:
-            lookup['_id'] = {'$nin': unseen_images}
+            lookup['_id'] = {'$in': unseen_images}
             lookup['mode'] = imode
         elif len(seen_ids) == 0:
             raise Exception("Seen Ids and Unseen Ids are both empty. FML.")
@@ -253,7 +253,7 @@ def pre_image_get_callback(request, lookup):
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = {'$in': least_seen}
             lookup['mode'] = imode
-    raise Warning(str(lookup))
+    #raise Warning(str(lookup))
 
 
 app.on_insert_mask += on_insert_mask
