@@ -242,7 +242,7 @@ def pre_image_get_callback(request, lookup):
         mode = 'try'
         imode = 'train'
         seen_images, seen_ids = get_seen_images(user_id, mode, task)
-
+        raise Warning("what's going on with seen images"+str(seen_ids))
         unseen_images = images.find({'_id': {'$nin': seen_ids},
                                      'mode': imode,
                                      'task': task},
