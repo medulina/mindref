@@ -142,8 +142,8 @@ def on_insert_mask(items):
             truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode': 'truth'})
 
             # Score the attemp
-            cm = get_cfx_mat(truth['pic'], i['pic'], get_totaln(i['image_id']))
-            i['score'] = get_dice(cm)
+            #cm = get_cfx_mat(truth['pic'], i['pic'], get_totaln(i['image_id']))
+            #i['score'] = get_dice(cm)
 
             # Find the user
             users = app.data.driver.db['user']
