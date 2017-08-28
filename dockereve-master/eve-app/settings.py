@@ -100,6 +100,12 @@ image_schema = {
     },
     'context': {
         'type': 'media'
+    },
+    'shape': {
+        'type': 'list',
+        'schema': {
+            'type': 'float',
+        }
     }
 }
 

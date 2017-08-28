@@ -21,8 +21,7 @@ from bson.objectid import ObjectId
 from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
-from numpy.random import randint,choice
-from PIL import Image
+from numpy.random import randint, choice
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -77,7 +76,7 @@ def get_ave(x):
         total += xi
     return total/len(x)
 
-def get_cfx_mat(truth, attempt, totaln):
+def get_cfx_mat(truth, attempt, totaln=None):
     x = deepcopy(truth)
     y = deepcopy(attempt)
     cm = {}
@@ -112,7 +111,8 @@ def get_cfx_mat(truth, attempt, totaln):
                 except KeyError:
                     cm[0] = {}
                     cm[0][yjv] = 1
-    cm[0][0] = totaln-rt
+    if totaln is not None:
+        cm[0][0] = totaln-rt
     return cm
 
 
@@ -127,8 +127,7 @@ def get_dice(cm):
 def get_totaln(image_id):
     images = app.data.driver.db['image']
     img = images.find_one({'_id': ObjectId(image_id)})
-    img = Image.open(BytesIO(base64.b64decode(img['pic'])))
-    return img.height * img.width
+    return img.shape[0] * img.shape[1]
 
 def on_insert_mask(items):
     for i in items:
@@ -142,8 +141,8 @@ def on_insert_mask(items):
             truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode': 'truth'})
 
             # Score the attemp
-            #cm = get_cfx_mat(truth['pic'], i['pic'], get_totaln(i['image_id']))
-            #i['score'] = get_dice(cm)
+            cm = get_cfx_mat(truth['pic'], i['pic'])
+            i['score'] = get_dice(cm)
 
             # Find the user
             users = app.data.driver.db['user']
