@@ -126,7 +126,7 @@ def get_dice(cm):
 
 def get_totaln(image_id):
     images = app.data.driver.db['image']
-    img = images.find_one({'_id': ObjectId(image_id])})
+    img = images.find_one({'_id': ObjectId(image_id)})
     img = Image.open(BytesIO(base64.b64decode(img['pic'])))
     return img.height * img.width
 
