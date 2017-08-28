@@ -126,7 +126,7 @@ def get_dice(cm):
 
 def get_totaln(image_id):
     images = app.data.driver.db['image']
-    img = images.find_one({'_id': ObjectId('image_id')})
+    img = images.find_one({'_id': ObjectId(image_id])})
     img = Image.open(BytesIO(base64.b64decode(img['pic'])))
     return img.height * img.width
 
@@ -139,9 +139,9 @@ def on_insert_mask(items):
         if i['mode'] == 'try':
             # Find the truth
             masks = app.data.driver.db['mask']
-            truth = masks.find_one({'image_id': i['image_id'], 'mode': 'truth'})
+            truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode': 'truth'})
 
-            # Score the attempt
+            # Score the attemp
             cm = get_cfx_mat(truth['pic'], i['pic'], get_totaln(i['image_id']))
             i['score'] = get_dice(cm)
 
