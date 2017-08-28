@@ -118,9 +118,18 @@ def get_cfx_mat(truth, attempt, totaln=None):
 
 def get_dice(cm):
     """Given a confusion matrix in dictionary form, return dice coefficient"""
-    tp = cm[1][1]
-    fp = cm[0][1]
-    fn = cm[1][0]
+    try:
+        tp = cm[1][1]
+    except KeyError:
+        tp = 0
+    try:
+        fp = cm[0][1]
+    except KeyError:
+        fp = 0
+    try:
+        fn = cm[1][0]
+    except KeyError:
+        fn = 0
     return (2 * tp)/(2 * tp + fp + fn)
 
 
