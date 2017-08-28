@@ -90,8 +90,7 @@ def get_cfx_mat(truth, attempt, totaln):
             try:
                 yjv = y[ik].pop(jk)
             except KeyError:
-                # Change this once we're getting sent the complete try masks
-                yjv = jv
+                yjv = 0
             try:
                 cm[jv][yjv] += 1
             except KeyError:
@@ -138,6 +137,14 @@ def on_insert_mask(items):
             i['pic'] = json.loads(i['pic'])
         # For attempts on training data, update users training score
         if i['mode'] == 'try':
+            # Find the truth
+            masks = app.data.driver.db['mask']
+            truth = masks.find_one({'image_id': i['image_id'], 'mode': 'truth'})
+
+            # Score the attempt
+            cm = get_cfx_mat(truth['pic'], i['pic'], get_totaln(i['image_id']))
+            i['score'] = get_dice(cm)
+
             # Find the user
             users = app.data.driver.db['user']
             a = users.find_one({'_id': ObjectId(i['user_id'])})
