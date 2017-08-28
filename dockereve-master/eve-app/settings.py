@@ -146,6 +146,10 @@ mask_schema = {
         'minlength': 1,
         'maxlength': 50,
         'required': True
+    },
+    'time': {
+    'type': 'float',
+    'min': 0.0
     }
 }
 
