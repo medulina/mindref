@@ -275,6 +275,7 @@ def post_post_mask(request, payload):
 
 app.on_insert_mask += on_insert_mask
 app.on_pre_GET_image += pre_image_get_callback
+app.on_post_POST_mask += post_post_mask
 
 # required. See http://swagger.io/specification/#infoObject for details.
 app.config['SWAGGER_INFO'] = {
