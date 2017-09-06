@@ -270,6 +270,8 @@ def pre_image_get_callback(request, lookup):
             lookup['mode'] = imode
     #raise Warning(str(lookup))
 
+def post_post_mask(request, payload):
+    raise Exception(str(payload))
 
 app.on_insert_mask += on_insert_mask
 app.on_pre_GET_image += pre_image_get_callback
