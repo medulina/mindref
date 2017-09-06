@@ -325,30 +325,32 @@ def get_cfx_masks(truth, attempt):
     return cm
 
 def post_post_mask(request, payload):
-    if request.args['mode'] == 'try':
-        resp = json.loads(payload.response[0].decode("utf-8"))
-        #raise Exception(str(payload.headers['Content-Length']) + '  ' + str(len(payload.response[0])))
-        mask_id = resp['_id']
-        masks = app.data.driver.db['mask']
-        mask = masks.find_one({'_id': ObjectId(mask_id)})
-        truth = masks.find_one({'image_id': ObjectId(mask['image_id']), 'mode': 'truth'})
-        cm = get_cfx_masks(truth['pic'], mask['pic'])
+    resp = json.loads(payload.response[0].decode("utf-8"))
+    mask_id = resp['_id']
+    masks = app.data.driver.db['mask']
+    mask = masks.find_one({'_id': ObjectId(mask_id)})
+    # If the mask doesn't have a score, don't return masks
+    try:
         resp['score'] = mask['score']
-        # TODO: Make this code work for multiclass
-        try: 
-            resp['tp'] = cm[1][1]
-        except KeyError:
-            resp['tp'] = {}
-        try:
-            resp['fp'] = cm[0][1]
-        except KeyError:
-            resp['fp'] = {}
-        try:
-            resp['fn'] = cm[1][0]
-        except KeyError:
-            resp['fn'] = {}
-        payload.response[0] = json.dumps(resp).encode()
-        payload.headers['Content-Length'] = len(payload.response[0])
+    except:
+        return None
+    truth = masks.find_one({'image_id': ObjectId(mask['image_id']), 'mode': 'truth'})
+    cm = get_cfx_masks(truth['pic'], mask['pic'])
+    # TODO: Make this code work for multiclass
+    try: 
+        resp['tp'] = cm[1][1]
+    except KeyError:
+        resp['tp'] = {}
+    try:
+        resp['fp'] = cm[0][1]
+    except KeyError:
+        resp['fp'] = {}
+    try:
+        resp['fn'] = cm[1][0]
+    except KeyError:
+        resp['fn'] = {}
+    payload.response[0] = json.dumps(resp).encode()
+    payload.headers['Content-Length'] = len(payload.response[0])
 
 def post_get_maskagg(request, payload):
     resp = json.loads(payload.response[0].decode("utf-8"))
