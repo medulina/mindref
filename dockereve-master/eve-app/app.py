@@ -147,7 +147,7 @@ def on_insert_mask(items):
         if i['mode'] == 'try':
             # Find the truth
             masks = app.data.driver.db['mask']
-            truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode': 'truth'})
+            truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode':'truth'})
 
             # Score the attemp
             cm = get_cfx_mat(truth['pic'], i['pic'])
@@ -270,8 +270,84 @@ def pre_image_get_callback(request, lookup):
             lookup['mode'] = imode
     #raise Warning(str(lookup))
 
+def get_cfx_masks(truth, attempt):
+    x = deepcopy(truth)
+    y = deepcopy(attempt)
+    cm = {}
+    # Run through truth and add to confusion matrix mask
+    for ik, iv in x.items():
+        while len(iv)>0:
+            jk, jv = iv.popitem()
+            try:
+                yjv = y[ik].pop(jk)
+            except KeyError:
+                yjv = 0
+            # Instatiate the mask dict for this combination of truth
+            # and try values
+            try:
+                target_mask = cm[jv][yjv]
+            except KeyError:
+                try:
+                    cm[jv][yjv] = {}
+                    target_mask = cm[jv][yjv]
+                except KeyError:
+                    cm[jv] = {}
+                    cm[jv][yjv] = {}
+                    target_mask = cm[jv][yjv]
+            try:
+                #mask for true value, test value, ik, jk = 1
+                target_mask[ik][jk] = 1
+            except KeyError:
+                #If ik doesn't exist, create the dict
+                target_mask[ik] = {}
+    # Run through try and add items not in truth to confustion matrix mask
+    for ik, iv in y.items():
+        while len(iv) > 0:
+            jk, yjv = iv.popitem()
+            # Instatiate the mask dict for this combination of truth
+            # and try values
+            try:
+                target_mask = cm[0][yjv]
+            except KeyError:
+                try:
+                    cm[0][yjv] = {}
+                    target_mask = cm[0][yjv]
+                except KeyError:
+                    cm[0] = {}
+                    cm[0][yjv] = {}
+                    target_mask = cm[0][yjv]
+            try:
+                # mask for true value, test value, ik, jk = 1
+                target_mask[ik][jk] = 1
+            except KeyError:
+                # If ik doesn't exist, create the dict
+                target_mask[ik] = {}
+    return cm
+
 def post_post_mask(request, payload):
-    raise Exception(str(payload))
+    resp = json.loads(payload.response[0].decode("utf-8"))
+    #raise Exception(str(payload.headers['Content-Length']) + '  ' + str(len(payload.response[0])))
+    mask_id = resp['_id']
+    masks = app.data.driver.db['mask']
+    mask = masks.find_one({'_id': ObjectId(mask_id)})
+    truth = masks.find_one({'image_id': ObjectId(mask['image_id']), 'mode': 'truth'})
+    cm = get_cfx_masks(truth['pic'], mask['pic'])
+    resp['score'] = mask['score']
+    # TODO: Make this code work for multiclass
+    try: 
+        resp['tp'] = cm[1][1]
+    except KeyError:
+        resp['tp'] = {}
+    try:
+        resp['fp'] = cm[0][1]
+    except KeyError:
+        resp['fp'] = {}
+    try:
+        resp['fn'] = cm[1][0]
+    except KeyError:
+        resp['fn'] = {}
+    payload.response[0] = json.dumps(resp).encode()
+    payload.headers['Content-Length'] = len(payload.response[0])
 
 app.on_insert_mask += on_insert_mask
 app.on_pre_GET_image += pre_image_get_callback
