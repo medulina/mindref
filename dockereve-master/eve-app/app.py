@@ -372,9 +372,9 @@ def sum_masks(mask_list):
 
 def post_get_maskagg(request, payload):
     resp = json.loads(payload.response[0].decode("utf-8"))
-    image_id = request.args['image_search']
+    image_id = resp['_items'][0]['_id']
     masks = app.data.driver.db['mask']
-    mask_list = masks.find({'image_id': ObjectId(image_id), 'mode': 'try'})
+    mask_list = [m['pic'] for m in masks.find({'image_id': ObjectId(image_id), 'mode': 'try'})]
     mask_sum = sum_masks(mask_list)
     resp['mask_sum'] = mask_sum
     payload.response[0] = json.dumps(resp).encode()
@@ -382,11 +382,10 @@ def post_get_maskagg(request, payload):
 
 
 
-
-
 app.on_insert_mask += on_insert_mask
 app.on_pre_GET_image += pre_image_get_callback
 app.on_post_POST_mask += post_post_mask
+app.on_post_GET_maskagg += post_get_maskagg
 
 # required. See http://swagger.io/specification/#infoObject for details.
 app.config['SWAGGER_INFO'] = {
