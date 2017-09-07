@@ -276,7 +276,7 @@ def get_cfx_masks(truth, attempt):
     cm = {}
     # Run through truth and add to confusion matrix mask
     for ik, iv in x.items():
-        while len(iv)>0:
+        while len(iv) > 0:
             jk, jv = iv.popitem()
             try:
                 yjv = y[ik].pop(jk)
@@ -300,6 +300,7 @@ def get_cfx_masks(truth, attempt):
             except KeyError:
                 #If ik doesn't exist, create the dict
                 target_mask[ik] = {}
+                target_mask[ik][jk] = 1
     # Run through try and add items not in truth to confustion matrix mask
     for ik, iv in y.items():
         while len(iv) > 0:
@@ -322,6 +323,7 @@ def get_cfx_masks(truth, attempt):
             except KeyError:
                 # If ik doesn't exist, create the dict
                 target_mask[ik] = {}
+                target_mask[ik][jk] = 1
     return cm
 
 def post_post_mask(request, payload):
@@ -352,8 +354,34 @@ def post_post_mask(request, payload):
     payload.response[0] = json.dumps(resp).encode()
     payload.headers['Content-Length'] = len(payload.response[0])
 
+def sum_masks(mask_list):
+    res = {}
+    for m in mask_list:
+        for ik, iv in m.items():
+            for jk, jv in iv.items():
+                if jv > 0:
+                    try:
+                        res[ik][jk] += jv
+                    except KeyError:
+                        try:
+                            res[ik][jk] = jv
+                        except KeyError:
+                            res[ik] = {}
+                            res[ik][jk] = jv
+    return res
+
 def post_get_maskagg(request, payload):
     resp = json.loads(payload.response[0].decode("utf-8"))
+    image_id = request.args['image_search']
+    masks = app.data.driver.db['mask']
+    mask_list = masks.find({'image_id': ObjectId(image_id), 'mode': 'try'})
+    mask_sum = sum_masks(mask_list)
+    resp['mask_sum'] = mask_sum
+    payload.response[0] = json.dumps(resp).encode()
+    payload.headers['Content-Length'] = len(payload.response[0])
+
+
+
 
 
 app.on_insert_mask += on_insert_mask
