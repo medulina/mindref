@@ -393,11 +393,12 @@ app.config['SWAGGER_INFO'] = {
     'version': 'v1'
 }
 
-@app.route('/api/authenticate/<provider>/<code>')
-def authenticate(provider, code):
+@app.route('/api/authenticate/<domain>/<provider>/<code>')
+def authenticate(domain, provider, code):
     provider = provider.upper()
-    data = {'client_id': app.config[provider+'_CLIENT_ID'],
-            'client_secret': app.config[provider+'_CLIENT_SECRET'],
+    domain = domain.upper()
+    data = {'client_id': app.config[domain+provider+'_CLIENT_ID'],
+            'client_secret': app.config[domain+provider+'_CLIENT_SECRET'],
             'code': code}
     tr = requests.post(app.config[provider+'_ACCESS_TOKEN_URL'], data=data)
     print(tr.text)
