@@ -80,3 +80,11 @@ The reqeust should look something like this:
 geti_url = url+'image?where={"task":"dev"}&user_id=%s&token=%s'%(uid,token)
 res_i= requests.get(geti_url)
 ```
+
+# Setting up certbot
+First you've got to run the website with the pre_cert_bot docker-compose file:
+`docker-compose -f docker-compose_pre_cert_bot.yml build; docker-compose -f docker-compose_pre_cert_bot.yml down -v; docker-compose -f docker-compose_pre_cert_bot.yml up`
+Then, while the site is up with that config, run the certbot docker container:
+`docker run -it --rm -v certs:/etc/letsencrypt -v certs-data:/data/letsencrypt certbot/certbot certonly --webroot --webroot-path=/data/letsencrypt  -d test.medulina.com -d testapi.medulina.com`
+This should create the certs and put them in the certs and certs-data folders. Then you can run `docker-compose build; docker-compose down -v; docker-compose up`. If you're on prod, there might be a different docker-compose file to use.
+
