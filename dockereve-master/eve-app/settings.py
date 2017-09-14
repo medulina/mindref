@@ -212,7 +212,68 @@ user_schema = {
         'type': 'float',
         'default': 0.0,
         'readonly': True
+    }
+}
+
+score_schema = {
+    'user_project_id': {
+        'type': 'string',
+        'required': True,
+        'unique': True
     },
+    'user_id': {
+        'type': 'objectid',
+        #'required': True,
+        'data_relation': {
+            'resource': 'user',
+            'field': '_id',
+            'embeddable': True
+        },
+    },
+    'task': {
+        'type': 'string',
+        'minlength': 1,
+        'maxlength': 50,
+        'required': True
+    },
+    'n_subs': {
+        'type': 'integer',
+        'default': 0,
+        'readonly': True
+    },
+    'n_try': {
+        'type': 'integer',
+        'default': 0,
+        'readonly': True
+    },
+    'n_test': {
+        'type': 'integer',
+        'default': 0,
+        'readonly': True
+    },
+    'total_score': {
+        'type': 'float',
+        'default': 0.0,
+        'readonly': True
+    },
+    'ave_score': {
+        'type': 'float',
+        'default': 0.0,
+        'readonly': True
+    },
+    'roll_scores': {
+        'type': 'list',
+        'schema': {
+            'type': 'float',
+        },
+        'default': [],
+        'readonly': True
+    },
+    'roll_ave_score': {
+        'type': 'float',
+        'default': 0.0,
+        'readonly': True
+    }
 }
 
 researcher_schema = {
@@ -303,6 +364,10 @@ settings = {
         },
         'maskagg': {
             'item_title': 'maskagg'
+        },
+        'score': {
+            'item_title': 'score',
+            'id_field': 'user_project_id'
         }
 
     }
@@ -311,6 +376,7 @@ settings = {
 settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
+settings['DOMAIN']['score']['schema'] = deepcopy(score_schema)
 settings['DOMAIN']['researcher']['schema'] = deepcopy(researcher_schema)
 settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)
 
