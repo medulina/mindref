@@ -270,10 +270,8 @@ def pre_image_get_callback(request, lookup):
         ups['ave_score'] = 0
         ups['roll_scores'] = []
         ups['roll_ave_score'] = 0
-        scores.update_one(
-                {'user_project_id': i['user_id']+'__'+i['task']},
-                {'$inc': {'n_subs': 1, 'n_test': 1}}
-            )
+        scores.insert_one(ups)
+
 
     # Decide if user will get a train or test image
     if (ups['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids) > 0):
