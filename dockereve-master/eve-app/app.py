@@ -36,7 +36,7 @@ class UserAuth(BasicAuth):
         return user and user['token'] == password
 
 
-#settings['DOMAIN']['mask']['authentication'] = UserAuth
+settings['DOMAIN']['mask']['authentication'] = UserAuth
 settings['DOMAIN']['mask']['public_methods'] = ['GET']
 settings['DOMAIN']['mask']['public_item_methods'] = ['GET']
 settings['DOMAIN']['mask']['resource_methods'] = ['GET', 'POST']
@@ -138,6 +138,17 @@ def get_totaln(image_id):
     img = images.find_one({'_id': ObjectId(image_id)})
     return img.shape[0] * img.shape[1]
 
+def roll_scores(a, score):
+    # Deal with growing the rolling score
+    if 'roll_scores' not in a.keys():
+        a['roll_scores'] = []
+    if len(a['roll_scores']) < roll_n:
+        updt_rs = a['roll_scores'].copy()
+    else:
+        updt_rs = a['roll_scores'][1:].copy()
+    updt_rs.append(score)
+    return updt_rs
+
 def on_insert_mask(items):
     for i in items:
         # Convert encode string as json
@@ -147,7 +158,7 @@ def on_insert_mask(items):
         if i['mode'] == 'try':
             # Find the truth
             masks = app.data.driver.db['mask']
-            truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode':'truth'})
+            truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode': 'truth'})
 
             # Score the attemp
             cm = get_cfx_mat(truth['pic'], i['pic'])
@@ -156,27 +167,58 @@ def on_insert_mask(items):
             # Find the user
             users = app.data.driver.db['user']
             a = users.find_one({'_id': ObjectId(i['user_id'])})
-            if 'roll_scores' not in a.keys():
-                a['roll_scores'] = []
-            if len(a['roll_scores']) < roll_n:
-                updt_rs = a['roll_scores'].copy()
-            else:
-                updt_rs = a['roll_scores'][1:].copy()
-            updt_rs.append(i['score'])
+            # Update user's rolling score
+            updated_roll = roll_scores(a, i['score'])
 
             # TODO: Verify submission is novel
+            # Update user's stats
             users.update_one(
                 {'_id': ObjectId(i['user_id'])},
                 {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
                  '$set': {'ave_score': (a['total_score'] + i['score']) / (a['n_try'] + 1),
-                          'roll_scores': updt_rs,
-                          'roll_ave_score': get_ave(updt_rs)}}
+                          'roll_scores': updated_roll,
+                          'roll_ave_score': get_ave(updated_roll)}}
             )
+
+            # Find the user_project_score
+            scores = app.data.driver.db['score']
+            ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
+            try:
+                updated_ups_roll = roll_scores(ups, i['score'])
+                scores.update_one(
+                    {'user_project_id': ups['user_project_id']},
+                    {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
+                     '$set': {'ave_score': (ups['total_score'] + i['score']) / (ups['n_try'] + 1),
+                              'roll_scores': updated_ups_roll,
+                              'roll_ave_score': get_ave(updated_ups_roll)}}
+                )
+            # If find_one returns None, initialize the score record
+            except AttributeError:
+                ups = {}
+                ups['user_project_id'] = str(i['user_id'])+'__'+i['task']
+                ups['user'] = i['user_id']
+                ups['task'] = i['task']
+                ups['n_subs'] = 1
+                ups['n_try'] = 1
+                ups['n_test'] = 0
+                ups['total_score'] = 0
+                ups['ave_score'] = i['score']
+                ups['roll_scores'] = [i['score']]
+                ups['roll_ave_score'] = i['score']
+                scores.insert_one(ups)
+
         # Increment user test counter
-        if i['mode'] == 'test':
+        elif i['mode'] == 'test':
             users = app.data.driver.db['user']
             users.update_one(
                 {'_id': ObjectId(i['user_id'])},
+                {'$inc': {'n_subs': 1, 'n_test': 1}}
+            )
+
+            scores = app.data.driver.db['score']
+            ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
+            scores.update_one(
+                {'user_project_id': i['user_id']+'__'+i['task']},
                 {'$inc': {'n_subs': 1, 'n_test': 1}}
             )
 
@@ -211,11 +253,14 @@ def pre_image_get_callback(request, lookup):
 
     users = app.data.driver.db['user']
     images = app.data.driver.db['image']
-    a = users.find_one({'_id': ObjectId(user_id), 'token': token})
+    #a = users.find_one({'_id': ObjectId(user_id), 'token': token})
     seen_test_images, seen_test_ids = get_seen_images(user_id, 'test', task)
 
+    scores = app.data.driver.db['score']
+    ups = scores.find_one({'user_project_id': str(user_id)+'__'+task})
+
     # Decide if user will get a train or test image
-    if (a['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids) > 0):
+    if (ups['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & (len(seen_test_ids) > 0):
 
         # Getting a novel test image if possible
         mode = 'test'
