@@ -36,7 +36,7 @@ class UserAuth(BasicAuth):
         return user and user['token'] == password
 
 
-settings['DOMAIN']['mask']['authentication'] = UserAuth
+#settings['DOMAIN']['mask']['authentication'] = UserAuth
 settings['DOMAIN']['mask']['public_methods'] = ['GET']
 settings['DOMAIN']['mask']['public_item_methods'] = ['GET']
 settings['DOMAIN']['mask']['resource_methods'] = ['GET', 'POST']
@@ -302,6 +302,8 @@ def pre_image_get_callback(request, lookup):
 
         if len(seen_ids) > 0:
             lookup['_id'] = ObjectId(choice(seen_ids, 1)[0])
+            #if images.find_one({'_id':lookup['_id']}) is None:
+            #    raise Exception("I have a mask for this image, but I can't find the image anymore. Repeat.")
             lookup['mode'] = imode
         else:
             lookup['mode'] = imode
@@ -326,6 +328,8 @@ def pre_image_get_callback(request, lookup):
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = choice(least_seen, 1)[0]
+            #if images.find_one({'_id':lookup['_id']}) is None:
+            #    raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen")
             lookup['mode'] = imode
     #raise Warning(str(lookup))
 
