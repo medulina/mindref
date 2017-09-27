@@ -197,6 +197,7 @@ def on_insert_mask(items):
                 ups = {}
                 ups['user_project_id'] = str(i['user_id'])+'__'+i['task']
                 ups['user'] = i['user_id']
+                ups['username'] = a['username']
                 ups['task'] = i['task']
                 ups['n_subs'] = 1
                 ups['n_try'] = 1

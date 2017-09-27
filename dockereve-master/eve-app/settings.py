@@ -230,6 +230,15 @@ score_schema = {
             'embeddable': True
         },
     },
+    'username': {
+        'type': 'string',
+        #'required': True,
+        'data_relation': {
+            'resource': 'user',
+            'field': 'username',
+            'embeddable': True
+        },
+    },
     'task': {
         'type': 'string',
         'minlength': 1,
