@@ -190,7 +190,8 @@ def on_insert_mask(items):
                     {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
                      '$set': {'ave_score': (ups['total_score'] + i['score']) / (ups['n_try'] + 1),
                               'roll_scores': updated_ups_roll,
-                              'roll_ave_score': get_ave(updated_ups_roll)}}
+                              'roll_ave_score': get_ave(updated_ups_roll),
+                              'username':a['username']}}
                 )
             # If find_one returns None, initialize the score record
             except AttributeError:
