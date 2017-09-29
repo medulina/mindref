@@ -154,13 +154,18 @@ def on_insert_mask(items):
         # Convert encode string as json
         if isinstance(i['pic'], str):
             i['pic'] = json.loads(i['pic'])
+        # Pull the image for that mask and see if it's set to training or test
+        images = app.data.driver.db['image']
+        image = images.find_one({'_id':i['image_id']})
+        if image['mode'] == 'test' and i['mode'] == 'try':
+            i['mode'] = 'test'
         # For attempts on training data, update users training score
         if i['mode'] == 'try':
             # Find the truth
             masks = app.data.driver.db['mask']
             truth = masks.find_one({'image_id': ObjectId(i['image_id']), 'mode': 'truth'})
 
-            # Score the attemp
+            # Score the attempt
             cm = get_cfx_mat(truth['pic'], i['pic'])
             i['score'] = get_dice(cm)
 
@@ -191,7 +196,7 @@ def on_insert_mask(items):
                      '$set': {'ave_score': (ups['total_score'] + i['score']) / (ups['n_try'] + 1),
                               'roll_scores': updated_ups_roll,
                               'roll_ave_score': get_ave(updated_ups_roll),
-                              'username':a['username']}}
+                              'username': a['username']}}
                 )
             # If find_one returns None, initialize the score record
             except AttributeError:
@@ -220,7 +225,7 @@ def on_insert_mask(items):
             scores = app.data.driver.db['score']
             ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
             scores.update_one(
-                {'user_project_id': i['user_id']+'__'+i['task']},
+                {'user_project_id': str(i['user_id'])+'__'+i['task']},
                 {'$inc': {'n_subs': 1, 'n_test': 1}}
             )
 
@@ -294,10 +299,16 @@ def pre_image_get_callback(request, lookup):
         if len(unseen_images) > 0:
             lookup['_id'] = ObjectId(choice(unseen_images, 1)[0])
             lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("Image id %s not found. Image ID was looked up from the unseen test images"%lookup['_id'])
+            
         else:
             least_seen = list(seen_test_images.loc[seen_test_images['count'] == seen_test_images['count'].min(), '_id'].values)
             lookup['_id'] = ObjectId(choice(least_seen, 1)[0])
             lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("Image id %s not found. Image ID was looked up from the least seen test images"%lookup['_id'])
+            
 
     elif randint(1, train_repeat+1) == train_repeat:
         # Getting a repeated training image
@@ -307,9 +318,9 @@ def pre_image_get_callback(request, lookup):
 
         if len(seen_ids) > 0:
             lookup['_id'] = ObjectId(choice(seen_ids, 1)[0])
-            #if images.find_one({'_id':lookup['_id']}) is None:
-            #    raise Exception("I have a mask for this image, but I can't find the image anymore. Repeat.")
             lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("I have a mask for this image, but I can't find the image anymore. Repeat.")
         else:
             lookup['mode'] = imode
 
@@ -328,14 +339,17 @@ def pre_image_get_callback(request, lookup):
         if len(unseen_images) > 0:
             lookup['_id'] = choice(unseen_images, 1)[0]
             lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("Image id %s not found. Image ID was looked up from the unseen training images"%lookup['_id'])
         elif len(seen_ids) == 0:
             raise Exception("Seen Ids and Unseen Ids are both empty. FML.")
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = choice(least_seen, 1)[0]
-            #if images.find_one({'_id':lookup['_id']}) is None:
-            #    raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen")
             lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen")
+            
     #raise Warning(str(lookup))
 
 def get_cfx_masks(truth, attempt):
