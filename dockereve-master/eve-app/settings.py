@@ -389,6 +389,9 @@ settings['DOMAIN']['score']['schema'] = deepcopy(score_schema)
 settings['DOMAIN']['researcher']['schema'] = deepcopy(researcher_schema)
 settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)
 
+# Keep user token from being exposed in gets
+settings['DOMAIN']['user']['datasource']={'projection':{'token': 0}}
+
 # Add aggregation endpoint for masks
 settings['DOMAIN']['maskagg']['datasource'] = {
     'source': 'mask',
