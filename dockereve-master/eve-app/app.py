@@ -282,9 +282,10 @@ def pre_image_get_callback(request, lookup):
         ups['roll_ave_score'] = 0
         scores.insert_one(ups)
 
+    train_roll = randint(1, test_per_train+1)
 
     # Decide if user will get a train or test image
-    if (ups['roll_ave_score'] >= test_thresh) & (randint(1, test_per_train+1) < test_per_train) & len(task_test_images):
+    if (ups['roll_ave_score'] >= test_thresh) & (train_roll < test_per_train) & (len(task_test_images) > 0):
 
         # Getting a novel test image if possible
         mode = 'test'
@@ -349,7 +350,6 @@ def pre_image_get_callback(request, lookup):
             lookup['mode'] = imode
             if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
                 raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen")
-            
     #raise Warning(str(lookup))
 
 def get_cfx_masks(truth, attempt):
