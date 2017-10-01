@@ -476,23 +476,48 @@ app.config['SWAGGER_INFO'] = {
 }
 
 @app.route('/api/authenticate/<domain>/<provider>/<code>')
-def authenticate(domain, provider, code):
+def authenticate(domain, provider, code=''):
+    """Authenticate access request and return encrypted token to client
+    Make the user if they don't exist.
+
+    Parameters
+    ----------
+    domain : string
+        Medulina domain ("test","tumor", "dg", etc.)
+    provider : string
+        Authentication provider ("github", "amazon")
+
+    Returns
+    -------
+    Returns a jsonified encrypted token to the client
+
+    """
     provider = provider.upper()
     domain = domain.upper()
+
+    users = app.data.driver.db['user']
+    # If oauth provider, get the token and user profile from the provider
+
+    # Prepare auth payload
     data = {'client_id': app.config[domain+provider+'_CLIENT_ID'],
             'client_secret': app.config[domain+provider+'_CLIENT_SECRET'],
             'code': code}
+    # get token
     tr = requests.post(app.config[provider+'_ACCESS_TOKEN_URL'], data=data)
-    print(tr.text)
     try:
         token = re.findall(app.config['TOKEN_RE'], tr.text)[0]
-    except IndexError as e:
+    except IndexError:
         return tr.text
+    # get user profile
     user_dat = get_profile(provider, token)
+    # encrypt token
     token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
     user_dat['id'] = str(user_dat['id'])
-    users = app.data.driver.db['user']
-    if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
+
+    # See if that user exists, if it doesn't, create it
+    if users.find_one({'username': user_dat['login'],
+                       'oa_id': user_dat['id'],
+                       'provider': app.config[provider+'_ACCESS_TOKEN_URL']}) is not None:
         users.update_one(
             {'username': user_dat['login'], 'oa_id': user_dat['id']},
             {'$set': {'token': token,
@@ -504,6 +529,7 @@ def authenticate(domain, provider, code):
             {'username': user_dat['login'], 'oa_id': user_dat['id']},
             {'$set': {'token': token,
                       'avatar': user_dat['avatar_url'],
+                      'provider': app.config[provider+'_ACCESS_TOKEN_URL'],
                       'n_subs': 0,
                       'n_try': 0,
                       'n_test': 0,

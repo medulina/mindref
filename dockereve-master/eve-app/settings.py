@@ -175,6 +175,9 @@ user_schema = {
     'oa_id': {
         'type': 'string',
     },
+    'provider': {
+        'type': 'string',
+    },
     'n_subs': {
         'type': 'integer',
         'default': 0,
