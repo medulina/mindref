@@ -218,6 +218,29 @@ user_schema = {
     }
 }
 
+internal_pw_schema = {
+    'user_id': {
+        'type': 'objectid',
+        'required': True,
+        'data_relation': {
+            'resource': 'user',
+            'field': '_id',
+            'embeddable': True
+        },
+    },
+    'username': {
+        'type': 'objectid',
+        'required': True,
+        'data_relation': {
+            'resource': 'user',
+            'field': 'username',
+            'embeddable': True
+        },
+    },
+    'password': {'type': 'string',
+                 'minlength': 8}
+}
+
 score_schema = {
     'user_project_id': {
         'type': 'string',
@@ -368,6 +391,10 @@ settings = {
         'user': {
             'item_title': 'user',
         },
+        'internal_pw': {
+            'item_title': 'internal_pw',
+            'internal_resource': True
+        },
         'researcher': {
             'item_title': 'researcher',
         },
@@ -388,12 +415,14 @@ settings = {
 settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
+settings['DOMAIN']['internal_pw']['schema'] = deepcopy(internal_pw_schema)
 settings['DOMAIN']['score']['schema'] = deepcopy(score_schema)
 settings['DOMAIN']['researcher']['schema'] = deepcopy(researcher_schema)
 settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)
 
 # Keep user token from being exposed in gets
-settings['DOMAIN']['user']['datasource']={'projection':{'token': 0}}
+settings['DOMAIN']['user']['datasource'] = {'projection':{'token': 0}}
+# Make PW endpoint internal
 
 # Add aggregation endpoint for masks
 settings['DOMAIN']['maskagg']['datasource'] = {
