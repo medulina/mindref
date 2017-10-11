@@ -3,14 +3,15 @@
 # vi: set ft=python sts=4 ts=4 sw=4 et:
 
 import os
-import sys
-import socket
+#import sys
+#import socket
 import json
 import re
-import requests
-import pandas as pd
 import base64
 from io import BytesIO
+
+import requests
+import pandas as pd
 from copy import deepcopy
 from eve import Eve
 from eve.auth import TokenAuth
@@ -20,6 +21,7 @@ from settings import settings
 from bson.objectid import ObjectId
 from flask.json import jsonify
 from flask_cors import CORS
+from flask import abort, request
 import bcrypt
 from numpy.random import randint, choice
 
@@ -156,7 +158,7 @@ def on_insert_mask(items):
             i['pic'] = json.loads(i['pic'])
         # Pull the image for that mask and see if it's set to training or test
         images = app.data.driver.db['image']
-        image = images.find_one({'_id':i['image_id']})
+        image = images.find_one({'_id': i['image_id']})
         if image['mode'] == 'test' and i['mode'] == 'try':
             i['mode'] = 'test'
         # For attempts on training data, update users training score
@@ -475,6 +477,12 @@ app.config['SWAGGER_INFO'] = {
     'version': 'v1'
 }
 
+@app.route('/api/username_exists/<username>')
+def username_exists(username):
+    users = app.data.driver.db['user']
+    return users.find_one({'username': username})is not None
+
+
 @app.route('/api/authenticate/<domain>/<provider>/<code>')
 def authenticate(domain, provider, code=''):
     """Authenticate access request and return encrypted token to client
@@ -492,6 +500,17 @@ def authenticate(domain, provider, code=''):
     Returns a jsonified encrypted token to the client
 
     """
+    anon = False
+    anon_un = ''
+    try:
+        if request.args['anon'] == 'true':
+            anon = True
+    except KeyError:
+        pass
+    try:
+        anon_un = str(request.args['username'])
+    except KeyError:
+        pass
     provider = provider.upper()
     domain = domain.upper()
 
@@ -513,18 +532,28 @@ def authenticate(domain, provider, code=''):
     # encrypt token
     token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
     user_dat['id'] = str(user_dat['id'])
+    user_dat['hash_id'] = bcrypt.hashpw(user_dat['id'].encode(), bcrypt.gensalt()).decode()
 
     # See if that user exists, if it doesn't, create it
     if users.find_one({'username': user_dat['login'],
                        'oa_id': user_dat['id'],
                        'provider': app.config[provider+'_ACCESS_TOKEN_URL']}) is not None:
         users.update_one(
-            {'username': user_dat['login'], 'oa_id': user_dat['id']},
+            {'username': user_dat['login'], 'oa_id': user_dat['id'],
+             'provider': app.config[provider+'_ACCESS_TOKEN_URL']},
             {'$set': {'token': token,
                       'avatar': user_dat['avatar_url']}},
             upsert=True
             )
-    else:
+    elif users.find_one({'oa_id': user_dat['hash_id'],
+                         'provider': app.config[provider+'_ACCESS_TOKEN_URL']}) is not None:
+        users.update_one(
+            {'oa_id': user_dat['hash_id'],
+             'provider': app.config[provider+'_ACCESS_TOKEN_URL']},
+            {'$set': {'token': token}},
+            upsert=True
+            )
+    elif anon is False:
         users.update_one(
             {'username': user_dat['login'], 'oa_id': user_dat['id']},
             {'$set': {'token': token,
@@ -539,6 +568,22 @@ def authenticate(domain, provider, code=''):
                       'roll_ave_score': 0.0}},
             upsert=True
             )
+    elif anon is True and not username_exists(anon_un):
+        users.update_one(
+            {'username': anon_un, 'oa_id': user_dat['hash_id']},
+            {'$set': {'token': token,
+                      'provider': app.config[provider+'_ACCESS_TOKEN_URL'],
+                      'n_subs': 0,
+                      'n_try': 0,
+                      'n_test': 0,
+                      'total_score': 0.0,
+                      'ave_score': 0.0,
+                      'roll_scores': [],
+                      'roll_ave_score': 0.0}},
+            upsert=True
+            )
+    else:
+        return jsonify({'error': 'Username is already taken'})
     return jsonify({'token': token})
 
 @app.route('/api/authenticatenew/<logintype>/<provider>/<code>')
