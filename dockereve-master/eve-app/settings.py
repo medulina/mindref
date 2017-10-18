@@ -212,6 +212,14 @@ user_schema = {
         'type': 'float',
         'default': 0.0,
         'readonly': True
+    },
+    'has_consented': {
+        'type': 'bool',
+        'default': False
+    },
+    'use_profile_pic': {
+        'type': 'bool',
+        'default': False
     }
 }
 
