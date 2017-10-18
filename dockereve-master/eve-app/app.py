@@ -18,10 +18,12 @@ from eve.auth import BasicAuth
 from eve_swagger import swagger
 from settings import settings
 from bson.objectid import ObjectId
+from flask import request
 from flask.json import jsonify
 from flask_cors import CORS
 import bcrypt
 from numpy.random import randint, choice
+from flask import abort, request
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -477,13 +479,36 @@ app.config['SWAGGER_INFO'] = {
 
 @app.route('/api/authenticate/<domain>/<provider>/<code>')
 def authenticate(domain, provider, code):
+    transfer_token = None
+    nickname = None
+    has_consented = None
+    use_profile_pic = None
+    try:
+        transfer_token = request.args['transfer_token']
+    except KeyError:
+        pass
+    try:
+        nickname = request.args['nickname']
+    except KeyError:
+        pass
+    try:
+        if request.args['has_consented'] == 'true':
+            has_consented = True
+    except KeyError:
+        pass
+    try:
+        if request.args['use_profile_pic'] == 'true':
+            use_profile_pic = True
+    except KeyError:
+        pass
+
     provider = provider.upper()
     domain = domain.upper()
     data = {'client_id': app.config[domain+provider+'_CLIENT_ID'],
             'client_secret': app.config[domain+provider+'_CLIENT_SECRET'],
             'code': code}
     tr = requests.post(app.config[provider+'_ACCESS_TOKEN_URL'], data=data)
-    print(tr.text)
+
     try:
         token = re.findall(app.config['TOKEN_RE'], tr.text)[0]
     except IndexError as e:
@@ -491,28 +516,49 @@ def authenticate(domain, provider, code):
     user_dat = get_profile(provider, token)
     token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
     user_dat['id'] = str(user_dat['id'])
+
+    if nickname is not None:
+        user_dat['login'] = nickname
     users = app.data.driver.db['user']
-    if users.find_one({'username': user_dat['login'], 'oa_id': user_dat['id']}) is not None:
-        users.update_one(
-            {'username': user_dat['login'], 'oa_id': user_dat['id']},
-            {'$set': {'token': token,
-                      'avatar': user_dat['avatar_url']}},
-            upsert=True
-            )
+    transfer_tokens = app.data.driver.db['transfer_token']
+    # If the user exists, set their token
+    if users.find_one({'oa_id': user_dat['id'],
+                       'provider': app.config[provider+'_ACCESS_TOKEN_URL']}) is not None:
+        users.update_one({'oa_id': user_dat['id'],
+                          'provider': app.config[provider+'_ACCESS_TOKEN_URL']},
+                         {'$set': {'username': user_dat['login'],
+                                   'token': token,
+                                   'avatar': user_dat['avatar_url']}},
+                         upsert=True)
+    # If the user doesn't exist
+    # And they've got a transfer token, transfer them
+    elif transfer_tokens.find_one({'transfer_token': transfer_token}) is not None:
+        tt_record = transfer_tokens.find_one({'transfer_token': transfer_token})
+        users.update_one({'_id': ObjectId(tt_record['user_id'])},
+                         {'$set': {'username': user_dat['login'],
+                                   'token': token,
+                                   'avatar': user_dat['avatar_url']}})
+    # If the user doesn't exist
+    # and they consented, create a new user
+    elif has_consented is True:
+        if use_profile_pic is None:
+            use_profile_pic = False
+        users.update_one({'oa_id': user_dat['id'],
+                          'provider': app.config[provider+'_ACCESS_TOKEN_URL']},
+                         {'$set': {'token': token,
+                                   'avatar': user_dat['avatar_url'],
+                                   'n_subs': 0,
+                                   'n_try': 0,
+                                   'n_test': 0,
+                                   'total_score': 0.0,
+                                   'ave_score': 0.0,
+                                   'roll_scores': [],
+                                   'roll_ave_score': 0.0,
+                                   'has_consented': has_consented,
+                                   'use_profile_pic': use_profile_pic}},
+                         upsert=True)
     else:
-        users.update_one(
-            {'username': user_dat['login'], 'oa_id': user_dat['id']},
-            {'$set': {'token': token,
-                      'avatar': user_dat['avatar_url'],
-                      'n_subs': 0,
-                      'n_try': 0,
-                      'n_test': 0,
-                      'total_score': 0.0,
-                      'ave_score': 0.0,
-                      'roll_scores': [],
-                      'roll_ave_score': 0.0}},
-            upsert=True
-            )
+        abort(403)
     return jsonify({'token': token})
 
 @app.route('/api/authenticatenew/<logintype>/<provider>/<code>')
