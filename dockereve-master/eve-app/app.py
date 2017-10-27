@@ -7,6 +7,7 @@ import sys
 import socket
 import json
 import re
+import secrets
 import requests
 import pandas as pd
 import base64
@@ -477,20 +478,25 @@ app.config['SWAGGER_INFO'] = {
     'version': 'v1'
 }
 
+
 @app.route('/api/authenticate/<domain>/<provider>/<code>')
 def authenticate(domain, provider, code):
-    transfer_token = None
-    nickname = None
+    # Get args and set default values
     has_consented = None
-    use_profile_pic = None
+    use_profile_pic = False
+    email_ok = False
     try:
-        transfer_token = request.args['transfer_token']
+        transfer_user_id = str(request.args['transfer_user_id'])
     except KeyError:
-        pass
+        transfer_user_id = None
     try:
-        nickname = request.args['nickname']
+        transfer_token = str(request.args['transfer_token'])
     except KeyError:
-        pass
+        transfer_token = None
+    try:
+        nickname = str(request.args['nickname'])
+    except KeyError:
+        nickname = None
     try:
         if request.args['has_consented'] == 'true':
             has_consented = True
@@ -499,6 +505,11 @@ def authenticate(domain, provider, code):
     try:
         if request.args['use_profile_pic'] == 'true':
             use_profile_pic = True
+    except KeyError:
+        pass
+    try:
+        if request.args['email_ok'] == 'true':
+            email_ok = True
     except KeyError:
         pass
 
@@ -511,14 +522,13 @@ def authenticate(domain, provider, code):
 
     try:
         token = re.findall(app.config['TOKEN_RE'], tr.text)[0]
-    except IndexError as e:
+    except IndexError:
         return tr.text
     user_dat = get_profile(provider, token)
     token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
     user_dat['id'] = str(user_dat['id'])
 
-    if nickname is not None:
-        user_dat['login'] = nickname
+
     users = app.data.driver.db['user']
     transfer_tokens = app.data.driver.db['transfer_token']
     # If the user exists, set their token
@@ -526,26 +536,36 @@ def authenticate(domain, provider, code):
                        'provider': app.config[provider+'_ACCESS_TOKEN_URL']}) is not None:
         users.update_one({'oa_id': user_dat['id'],
                           'provider': app.config[provider+'_ACCESS_TOKEN_URL']},
-                         {'$set': {'username': user_dat['login'],
-                                   'token': token,
+                         {'$set': {'token': token,
                                    'avatar': user_dat['avatar_url']}},
                          upsert=True)
     # If the user doesn't exist
     # And they've got a transfer token, transfer them
-    elif transfer_tokens.find_one({'transfer_token': transfer_token}) is not None:
-        tt_record = transfer_tokens.find_one({'transfer_token': transfer_token})
-        users.update_one({'_id': ObjectId(tt_record['user_id'])},
-                         {'$set': {'username': user_dat['login'],
-                                   'token': token,
-                                   'avatar': user_dat['avatar_url']}})
+
+    elif (transfer_token is not None) and (transfer_tokens.find_one({'user_id': ObjectId(transfer_user_id)}) is not None):
+        tt_record = transfer_tokens.find_one({'user_id': transfer_user_id})
+        if bcrypt.hashpw(transfer_token, tt_record['transfer_token']) == tt_record['transfer_token']:
+            if nickname is not None:
+                user_dat['login'] = nickname
+            users.update_one({'_id': ObjectId(transfer_user_id)},
+                             {'$set': {'username': user_dat['login'],
+                                       'token': token,
+                                       'avatar': user_dat['avatar_url'],
+                                       'oa_id': user_dat['id'],
+                                       'provider': app.config[provider+'_ACCESS_TOKEN_URL'],
+                                       'use_profile_pic': use_profile_pic,
+                                       'email_ok': email_ok}})
+        else:
+            abort(403)
     # If the user doesn't exist
     # and they consented, create a new user
     elif has_consented is True:
-        if use_profile_pic is None:
-            use_profile_pic = False
+        if nickname is not None:
+            user_dat['login'] = nickname
         users.update_one({'oa_id': user_dat['id'],
                           'provider': app.config[provider+'_ACCESS_TOKEN_URL']},
                          {'$set': {'token': token,
+                                   'username': user_dat['login'],
                                    'avatar': user_dat['avatar_url'],
                                    'n_subs': 0,
                                    'n_try': 0,
@@ -555,11 +575,56 @@ def authenticate(domain, provider, code):
                                    'roll_scores': [],
                                    'roll_ave_score': 0.0,
                                    'has_consented': has_consented,
-                                   'use_profile_pic': use_profile_pic}},
+                                   'use_profile_pic': use_profile_pic,
+                                   'email_ok': email_ok}},
                          upsert=True)
     else:
         abort(403)
     return jsonify({'token': token})
+
+
+@app.route('/api/anonymous')
+def anonymous():
+    has_consented = None
+    use_profile_pic = False
+    try:
+        if request.args['has_consented'] == 'true':
+            has_consented = True
+    except KeyError:
+        pass
+    try:
+        if request.args['use_profile_pic'] == 'true':
+            use_profile_pic = True
+    except KeyError:
+        pass
+
+    if has_consented is True:
+        username = secrets.token_urlsafe(16)
+        token = secrets.token_urlsafe(64)
+        token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
+        transfer_token = secrets.token_urlsafe(64)
+
+        users = app.data.driver.db['user']
+        transfer_tokens = app.data.driver.db['transfer_token']
+
+        result = users.insert_one({'username': username,
+                                   'token': token,
+                                   'n_subs': 0,
+                                   'n_try': 0,
+                                   'n_test': 0,
+                                   'total_score': 0.0,
+                                   'ave_score': 0.0,
+                                   'roll_scores': [],
+                                   'roll_ave_score': 0.0,
+                                   'has_consented': has_consented,
+                                   'use_profile_pic': use_profile_pic})
+        transfer_tokens.insert_one({'user_id': result.inserted_id,
+                                   'transfer_token': bcrypt.hashpw(transfer_token.encode(), bcrypt.gensalt()).decode()})
+        return jsonify({'token': token,
+                        'user_id': str(result.inserted_id),
+                        'tranfer_token': transfer_token})
+    else:
+        abort(403)
 
 @app.route('/api/authenticatenew/<logintype>/<provider>/<code>')
 def authenticatenew(logintype, provider, code):
