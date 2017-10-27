@@ -223,6 +223,24 @@ user_schema = {
     },
     'provider': {
         'type': 'string',
+    },
+    'email_ok': {
+        'type': 'bool'
+    }
+}
+
+token_schema = {
+    'user_id': {
+            'type': 'objectid',
+            #'required': True,
+            'data_relation': {
+                'resource': 'user',
+                'field': '_id',
+                'embeddable': True
+            },
+        },
+    'token': {
+        'type': 'string'
     }
 }
 
@@ -391,6 +409,10 @@ settings = {
         'user': {
             'item_title': 'user',
         },
+        'token': {
+            'item_title': 'token',
+            'internal_resource': True
+        },
         'transfer_token': {
             'item_title': 'transfer_token',
             'internal_resource': True
@@ -416,6 +438,7 @@ settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
 settings['DOMAIN']['transfer_token']['schema'] = deepcopy(transfer_token_schema)
+settings['DOMAIN']['token']['schema'] = deepcopy(token_schema)
 settings['DOMAIN']['score']['schema'] = deepcopy(score_schema)
 settings['DOMAIN']['researcher']['schema'] = deepcopy(researcher_schema)
 settings['DOMAIN']['project']['schema'] = deepcopy(project_schema)
