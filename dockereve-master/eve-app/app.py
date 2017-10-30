@@ -296,7 +296,7 @@ def pre_image_get_callback(request, lookup):
     train_roll = randint(1, test_per_train+1)
 
     # Decide if user will get a train or test image
-    if (ups['roll_ave_score'] >= test_thresh) & (train_roll < test_per_train) & (len(task_test_images) > 0):
+    if (ups['roll_ave_score'] >= test_thresh) and (len(ups['roll_scores']) >= roll_n) and (train_roll < test_per_train) and (len(task_test_images) > 0):
 
         # Getting a novel test image if possible
         mode = 'test'
