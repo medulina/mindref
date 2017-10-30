@@ -551,7 +551,7 @@ def authenticate(domain, provider, code):
     # And they've got a transfer token, transfer them
 
     elif (transfer_token is not None) and (transfer_tokens.find_one({'user_id': ObjectId(transfer_user_id)}) is not None):
-        tt_record = transfer_tokens.find_one({'user_id': transfer_user_id})
+        tt_record = transfer_tokens.find_one({'user_id': ObjectID(transfer_user_id)})
         if bcrypt.hashpw(transfer_token, tt_record['transfer_token']) == tt_record['transfer_token']:
             if nickname is not None:
                 user_dat['login'] = nickname
