@@ -552,7 +552,7 @@ def authenticate(domain, provider, code):
 
     elif (transfer_token is not None) and (transfer_tokens.find_one({'user_id': ObjectId(transfer_user_id)}) is not None):
         tt_record = transfer_tokens.find_one({'user_id': ObjectId(transfer_user_id)})
-        if bcrypt.hashpw(transfer_token, tt_record['transfer_token']) == tt_record['transfer_token']:
+        if bcrypt.hashpw(transfer_token.encode(), tt_record['transfer_token'].encode()).decode() == tt_record['transfer_token']:
             if nickname is not None:
                 user_dat['login'] = nickname
             users.update_one({'_id': ObjectId(transfer_user_id)},
@@ -564,6 +564,7 @@ def authenticate(domain, provider, code):
                                        'use_profile_pic': use_profile_pic,
                                        'email_ok': email_ok}})
         else:
+            #raise Exception(str(bcrypt.hashpw(transfer_token.encode(),tt_record['transfer_token'].encode())) + ' '  + str(tt_record['transfer_token']))
             abort(403)
     # If the user doesn't exist
     # and they consented, create a new user
