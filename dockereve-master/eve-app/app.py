@@ -25,7 +25,6 @@ from flask_cors import CORS
 import bcrypt
 from numpy.random import randint, choice
 from flask import abort, request
-import pycorpora
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
