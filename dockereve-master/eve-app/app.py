@@ -25,6 +25,7 @@ from flask_cors import CORS
 import bcrypt
 from numpy.random import randint, choice
 from flask import abort, request
+import pycorpora
 
 API_TOKEN = os.environ.get("API_TOKEN")
 
@@ -70,6 +71,14 @@ roll_n = app.config['ROLL_N']
 test_thresh = app.config['TEST_THRESH']
 test_per_train = app.config['TEST_PER_TRAIN']
 train_repeat = app.config['TRAIN_REPEAT']
+
+# load wordlists for random user names
+with open('words/animals.csv','r') as h:
+    animals = [n.strip() for n in h.readlines()]
+with open('words/adjs.csv','r') as h:
+    adjs = [n.strip() for n in h.readlines()]
+with open('words/names.csv','r') as h:
+    names = [n.strip() for n in h.readlines()]
 
 def get_ave(x):
     if len(x) == 0:
@@ -599,7 +608,7 @@ def anonymous():
         pass
 
     if has_consented is True:
-        username = secrets.token_urlsafe(16)
+        username = choice(names) + ', the ' + choice(adjs) + ' ' + choice(animals)
         token = secrets.token_urlsafe(64)
         token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
         transfer_token = secrets.token_urlsafe(64)
