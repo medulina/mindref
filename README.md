@@ -88,3 +88,17 @@ Then, while the site is up with that config, run the certbot docker container:
 `docker run -it --rm -v certs:/etc/letsencrypt -v certs-data:/data/letsencrypt certbot/certbot certonly --webroot --webroot-path=/data/letsencrypt  -d test.medulina.com -d testapi.medulina.com`
 This should create the certs and put them in the certs and certs-data folders. Then you can run `docker-compose build; docker-compose down -v; docker-compose up`. If you're on prod, there might be a different docker-compose file to use.
 
+
+# to load custom config file in mongo, use the following in your docker-compose:
+```
+mongodb:
+  image: mongo
+  volumes:
+    - ~/data/mongodb:/data/db
+    - ./mongodb/mongod.conf:/etc/mongod.conf
+  expose:
+    - 27017
+  ports:
+    - 27017
+  command: mongod -f /etc/mongod.conf
+```
