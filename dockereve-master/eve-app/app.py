@@ -26,6 +26,7 @@ import bcrypt
 from numpy.random import randint, choice
 from flask import abort, request
 
+
 API_TOKEN = os.environ.get("API_TOKEN")
 
 class TokenAuth(TokenAuth):
@@ -162,6 +163,7 @@ def roll_scores(a, score):
 
 def on_insert_mask(items):
     for i in items:
+        i['image_id_str'] = str(i['image_id'])
         # Convert encode string as json
         if isinstance(i['pic'], str):
             i['pic'] = json.loads(i['pic'])
@@ -239,7 +241,6 @@ def on_insert_mask(items):
                 {'user_project_id': str(i['user_id'])+'__'+i['task']},
                 {'$inc': {'n_subs': 1, 'n_test': 1}}
             )
-
 
 def get_seen_images(user_id, mode, task):
     masks = app.data.driver.db['mask']
@@ -361,7 +362,7 @@ def pre_image_get_callback(request, lookup):
             lookup['mode'] = imode
             if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
                 raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen")
-    #raise Warning(str(lookup))
+    #raise Warning(str(lookup))    
 
 def get_cfx_masks(truth, attempt):
     x = deepcopy(truth)
@@ -420,6 +421,7 @@ def get_cfx_masks(truth, attempt):
     return cm
 
 def post_post_mask(request, payload):
+
     resp = json.loads(payload.response[0].decode("utf-8"))
     mask_id = resp['_id']
     masks = app.data.driver.db['mask']
@@ -447,11 +449,14 @@ def post_post_mask(request, payload):
     payload.response[0] = json.dumps(resp).encode()
     payload.headers['Content-Length'] = len(payload.response[0])
 
-def sum_masks(mask_list):
+def sum_masks(mask_list,prepend = ''):
+    # need to be able to prepend a character to make it valid xml
     res = {}
     for m in mask_list:
         for ik, iv in m.items():
+            ik = prepend+ik
             for jk, jv in iv.items():
+                jk = prepend+jk
                 if jv > 0:
                     try:
                         res[ik][jk] += jv
@@ -463,21 +468,29 @@ def sum_masks(mask_list):
                             res[ik][jk] = jv
     return res
 
+def pre_get_maskagg(request, lookup):
+    raise Exception(request, lookup)
+
 def post_get_maskagg(request, payload):
-    resp = json.loads(payload.response[0].decode("utf-8"))
-    image_id = resp['_items'][0]['_id']
-    masks = app.data.driver.db['mask']
-    mask_list = [m['pic'] for m in masks.find({'image_id': ObjectId(image_id), 'mode': 'try'})]
-    mask_sum = sum_masks(mask_list)
-    resp['mask_sum'] = mask_sum
-    payload.response[0] = json.dumps(resp).encode()
-    payload.headers['Content-Length'] = len(payload.response[0])
+    #response payload may be xml or json, just return the xml if it's an xml request
+    try:
+        resp = json.loads(payload.response[0].decode("utf-8"))
+        image_id = resp['_items'][0]['_id']
+        masks = app.data.driver.db['mask']
+        mask_list = [m['pic'] for m in masks.find({'image_id': ObjectId(image_id), 'mode': 'try'})]
+        mask_sum = sum_masks(mask_list)
+        resp['mask_sum'] = mask_sum
+        payload.headers['Content-Length'] = len(payload.response[0])
+    except json.decoder.JSONDecodeError:
+        pass
+    
 
 
 
 app.on_insert_mask += on_insert_mask
 app.on_pre_GET_image += pre_image_get_callback
 app.on_post_POST_mask += post_post_mask
+#app.on_pre_GET_maskagg += pre_get_maskagg
 app.on_post_GET_maskagg += post_get_maskagg
 
 # required. See http://swagger.io/specification/#infoObject for details.
@@ -485,7 +498,6 @@ app.config['SWAGGER_INFO'] = {
     'title': 'Medulina Web API',
     'version': 'v1'
 }
-
 
 @app.route('/api/authenticate/<domain>/<provider>/<code>')
 def authenticate(domain, provider, code):
