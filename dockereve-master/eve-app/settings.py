@@ -449,7 +449,7 @@ settings['DOMAIN']['maskagg']['datasource'] = {
     'aggregation': {
         'pipeline': [
             {'$match': {'image_id': '$image_search',
-                        'mode': 'try'}},
+                        'mode': {'$ne':'truth'}}},
             {'$group': {
                 '_id': {
                     'image_id': '$image_id',
