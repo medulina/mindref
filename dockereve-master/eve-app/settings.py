@@ -226,6 +226,17 @@ user_schema = {
     },
     'email_ok': {
         'type': 'bool'
+    },
+    'managing': {
+        'type': 'bool'
+    },
+    'project_id': {
+        'type': 'objectid',
+        'data_relation': {
+            'resource': 'project',
+            'field': '_id',
+            'embeddable': True
+        }
     }
 }
 
@@ -371,7 +382,7 @@ project_schema = {
             'manager_id': {
                 'type': 'objectid',
                 'data_relation': {
-                    'resource': 'manager',
+                    'resource': 'user',
                     'embeddable': True
                 },
             }
@@ -449,7 +460,7 @@ settings['DOMAIN']['maskagg']['datasource'] = {
     'aggregation': {
         'pipeline': [
             {'$match': {'image_id': '$image_search',
-                        'mode': {'$ne':'truth'}}},
+                        'mode': {'$ne': 'truth'}}},
             {'$group': {
                 '_id': {
                     'image_id': '$image_id',

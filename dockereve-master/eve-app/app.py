@@ -169,7 +169,7 @@ def on_insert_mask(items):
             i['pic'] = json.loads(i['pic'])
         # Pull the image for that mask and see if it's set to training or test
         images = app.data.driver.db['image']
-        image = images.find_one({'_id':i['image_id']})
+        image = images.find_one({'_id': i['image_id']})
         if image['mode'] == 'test' and i['mode'] == 'try':
             i['mode'] = 'test'
         # For attempts on training data, update users training score
@@ -185,62 +185,71 @@ def on_insert_mask(items):
             # Find the user
             users = app.data.driver.db['user']
             a = users.find_one({'_id': ObjectId(i['user_id'])})
-            # Update user's rolling score
-            updated_roll = roll_scores(a, i['score'])
 
-            # TODO: Verify submission is novel
-            # Update user's stats
-            users.update_one(
-                {'_id': ObjectId(i['user_id'])},
-                {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
-                 '$set': {'ave_score': (a['total_score'] + i['score']) / (a['n_try'] + 1),
-                          'roll_scores': updated_roll,
-                          'roll_ave_score': get_ave(updated_roll)}}
-            )
+            # check for consent here
+            if a['has_consented']:
+                # Update user's rolling score
+                updated_roll = roll_scores(a, i['score'])
 
-            # Find the user_project_score
-            scores = app.data.driver.db['score']
-            ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
-            try:
-                updated_ups_roll = roll_scores(ups, i['score'])
-                scores.update_one(
-                    {'user_project_id': ups['user_project_id']},
+                # TODO: Verify submission is novel
+                # Update user's stats
+                users.update_one(
+                    {'_id': ObjectId(i['user_id'])},
                     {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
-                     '$set': {'ave_score': (ups['total_score'] + i['score']) / (ups['n_try'] + 1),
-                              'roll_scores': updated_ups_roll,
-                              'roll_ave_score': get_ave(updated_ups_roll),
-                              'username': a['username']}}
+                     '$set': {'ave_score': (a['total_score'] + i['score']) / (a['n_try'] + 1),
+                              'roll_scores': updated_roll,
+                              'roll_ave_score': get_ave(updated_roll)}}
                 )
-            # If find_one returns None, initialize the score record
-            except AttributeError:
-                ups = {}
-                ups['user_project_id'] = str(i['user_id'])+'__'+i['task']
-                ups['user'] = i['user_id']
-                ups['username'] = a['username']
-                ups['task'] = i['task']
-                ups['n_subs'] = 1
-                ups['n_try'] = 1
-                ups['n_test'] = 0
-                ups['total_score'] = 0
-                ups['ave_score'] = i['score']
-                ups['roll_scores'] = [i['score']]
-                ups['roll_ave_score'] = i['score']
-                scores.insert_one(ups)
+
+                # Find the user_project_score
+                scores = app.data.driver.db['score']
+                ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
+                try:
+                    updated_ups_roll = roll_scores(ups, i['score'])
+                    scores.update_one(
+                        {'user_project_id': ups['user_project_id']},
+                        {'$inc': {'n_subs': 1, 'n_try': 1, 'total_score': i['score']},
+                         '$set': {'ave_score': (ups['total_score'] + i['score']) / (ups['n_try'] + 1),
+                                  'roll_scores': updated_ups_roll,
+                                  'roll_ave_score': get_ave(updated_ups_roll),
+                                  'username': a['username']}}
+                    )
+                # If find_one returns None, initialize the score record
+                except AttributeError:
+                    ups = {}
+                    ups['user_project_id'] = str(i['user_id'])+'__'+i['task']
+                    ups['user'] = i['user_id']
+                    ups['username'] = a['username']
+                    ups['task'] = i['task']
+                    ups['n_subs'] = 1
+                    ups['n_try'] = 1
+                    ups['n_test'] = 0
+                    ups['total_score'] = 0
+                    ups['ave_score'] = i['score']
+                    ups['roll_scores'] = [i['score']]
+                    ups['roll_ave_score'] = i['score']
+                    scores.insert_one(ups)
+            else:
+                i['consent'] = False
 
         # Increment user test counter
         elif i['mode'] == 'test':
             users = app.data.driver.db['user']
-            users.update_one(
-                {'_id': ObjectId(i['user_id'])},
-                {'$inc': {'n_subs': 1, 'n_test': 1}}
-            )
+            a = users.find_one({'_id': ObjectId(i['user_id'])})
+            if a['has_consented']:
+                users.update_one(
+                    {'_id': ObjectId(i['user_id'])},
+                    {'$inc': {'n_subs': 1, 'n_test': 1}}
+                )
 
-            scores = app.data.driver.db['score']
-            ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
-            scores.update_one(
-                {'user_project_id': str(i['user_id'])+'__'+i['task']},
-                {'$inc': {'n_subs': 1, 'n_test': 1}}
-            )
+                scores = app.data.driver.db['score']
+                ups = scores.find_one({'user_project_id': str(i['user_id'])+'__'+i['task']})
+                scores.update_one(
+                    {'user_project_id': str(i['user_id'])+'__'+i['task']},
+                    {'$inc': {'n_subs': 1, 'n_test': 1}}
+                )
+            else:
+                abort(403)
 
 def get_seen_images(user_id, mode, task):
     masks = app.data.driver.db['mask']
@@ -432,7 +441,7 @@ def post_post_mask(request, payload):
     # If the mask doesn't have a score, don't return masks
     try:
         resp['score'] = mask['score']
-    except:
+    except KeyError:
         return None
     truth = masks.find_one({'image_id': ObjectId(mask['image_id']), 'mode': 'truth'})
     cm = get_cfx_masks(truth['pic'], mask['pic'])
@@ -451,6 +460,12 @@ def post_post_mask(request, payload):
         resp['fn'] = {}
     payload.response[0] = json.dumps(resp).encode()
     payload.headers['Content-Length'] = len(payload.response[0])
+    
+    try:
+        if mask['consent'] is False:
+            masks.delete_one({'_id': ObjectId(mask_id)})
+    except KeyError:
+        pass
 
 def sum_masks(mask_list,prepend = ''):
     # need to be able to prepend a character to make it valid xml
@@ -612,6 +627,8 @@ def anonymous():
     try:
         if request.args['has_consented'] == 'true':
             has_consented = True
+        else:
+            has_consented = False
     except KeyError:
         pass
     try:
@@ -620,33 +637,62 @@ def anonymous():
     except KeyError:
         pass
 
-    if has_consented is True:
-        username = choice(names) + ', the ' + choice(adjs) + ' ' + choice(animals)
-        token = secrets.token_urlsafe(64)
-        token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
-        transfer_token = secrets.token_urlsafe(64)
+    username = choice(names) + ', the ' + choice(adjs) + ' ' + choice(animals)
+    token = secrets.token_urlsafe(64)
+    token = bcrypt.hashpw(token.encode(), bcrypt.gensalt()).decode()
+    transfer_token = secrets.token_urlsafe(64)
 
-        users = app.data.driver.db['user']
-        transfer_tokens = app.data.driver.db['transfer_token']
+    users = app.data.driver.db['user']
+    transfer_tokens = app.data.driver.db['transfer_token']
 
-        result = users.insert_one({'username': username,
-                                   'token': token,
-                                   'n_subs': 0,
-                                   'n_try': 0,
-                                   'n_test': 0,
-                                   'total_score': 0.0,
-                                   'ave_score': 0.0,
-                                   'roll_scores': [],
-                                   'roll_ave_score': 0.0,
-                                   'has_consented': has_consented,
-                                   'use_profile_pic': use_profile_pic})
-        transfer_tokens.insert_one({'user_id': result.inserted_id,
-                                   'transfer_token': bcrypt.hashpw(transfer_token.encode(), bcrypt.gensalt()).decode()})
-        return jsonify({'token': token,
-                        'user_id': str(result.inserted_id),
-                        'transfer_token': transfer_token})
+    result = users.insert_one({'username': username,
+                               'token': token,
+                               'n_subs': 0,
+                               'n_try': 0,
+                               'n_test': 0,
+                               'total_score': 0.0,
+                               'ave_score': 0.0,
+                               'roll_scores': [],
+                               'roll_ave_score': 0.0,
+                               'has_consented': has_consented,
+                               'use_profile_pic': use_profile_pic})
+    transfer_tokens.insert_one({'user_id': result.inserted_id,
+                               'transfer_token': bcrypt.hashpw(transfer_token.encode(), bcrypt.gensalt()).decode()})
+    return jsonify({'token': token,
+                    'user_id': str(result.inserted_id),
+                    'transfer_token': transfer_token})
+
+@app.route('/api/consent')
+def consent():
+    has_consented = None
+    try:
+        user_id = str(request.args['user_id'])
+    except KeyError:
+        user_id = None
+    try:
+        token = str(request.args['token'])
+    except KeyError:
+        token = None
+    try:
+        if request.args['has_consented'] == 'true':
+            has_consented = True
+        else:
+            has_consented = False
+    except KeyError:
+        pass
+    users = app.data.driver.db['user']
+    a = users.find_one({'_id': ObjectId(user_id), 'token': token})
+    print("userid", user_id, "token", token)
+    if a is not None:
+        users.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$set': {'has_consented': has_consented}}
+        )
+        return jsonify({'user_id': user_id,
+                        'has_consented': has_consented})
     else:
         abort(403)
+
 
 @app.route('/api/authenticatenew/<logintype>/<provider>/<code>')
 def authenticatenew(logintype, provider, code):
