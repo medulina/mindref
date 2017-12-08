@@ -89,4 +89,5 @@ Then, while the site is up with that config, run the certbot docker container:
 This should create the certs and put them in the certs and certs-data folders. Then you can run `docker-compose build; docker-compose down -v; docker-compose up`. If you're on prod, there might be a different docker-compose file to use.
 
 # Renewing certbot
-docker run -it --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew
+`docker run -it --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew`
+Then restart the docker containers.
