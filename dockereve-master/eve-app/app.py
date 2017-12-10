@@ -287,6 +287,9 @@ def pre_image_get_callback(request, lookup):
     task_test_images = images.find({'task': task, 'mode': 'test'})
     task_test_images = [r for r in task_test_images]
 
+    task_train_images = images.find({'task': task, 'mode': 'train'})
+    task_train_images = [r for r in task_train_images]
+
     scores = app.data.driver.db['score']
     ups = scores.find_one({'user_project_id': str(user_id)+'__'+task})
     if ups is None:
@@ -346,7 +349,7 @@ def pre_image_get_callback(request, lookup):
         else:
             lookup['mode'] = imode
 
-    else:
+    elif len(task_train_images) > 0:
         # Getting a novel training image if possible
         # If not, get a training image they've seen the fewest number of times
         # Find the images a user has seen
@@ -364,13 +367,38 @@ def pre_image_get_callback(request, lookup):
             if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
                 raise Exception("Image id %s not found. Image ID was looked up from the unseen training images"%lookup['_id'])
         elif len(seen_ids) == 0:
-            raise Exception("Seen Ids and Unseen Ids are both empty. FML.")
+            raise Exception("Seen Ids and Unseen Ids are both empty. FML. Train images.")
         else:
             least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
             lookup['_id'] = choice(least_seen, 1)[0]
             lookup['mode'] = imode
             if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
-                raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen")
+                raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen train images")
+    elif len(task_test_images) > 0:
+        mode = 'test'
+        imode = 'test'
+        seen_images, seen_ids = get_seen_images(user_id, mode, task)
+        unseen_images = images.find({'_id': {'$nin': seen_ids},
+                                     'mode': imode,
+                                     'task': task},
+                                    {'_id': 1})
+        unseen_images = [r['_id'] for r in unseen_images]
+        if len(unseen_images) > 0:
+            lookup['_id'] = choice(unseen_images, 1)[0]
+            lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("Image id %s not found. Image ID was looked up from the unseen test images"%lookup['_id'])
+        elif len(seen_ids) == 0:
+            raise Exception("Seen Ids and Unseen Ids are both empty. FML. Test images.")
+        else:
+            least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
+            lookup['_id'] = choice(least_seen, 1)[0]
+            lookup['mode'] = imode
+            if images.find_one({'_id':lookup['_id'], 'mode':lookup['mode']}) is None:
+                raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen test images")
+    else:
+        abort(404)
+
     #raise Warning(str(lookup))    
 
 def get_cfx_masks(truth, attempt):
@@ -596,7 +624,7 @@ def authenticate(domain, provider, code):
             abort(403)
     # If the user doesn't exist
     # and they consented, create a new user
-    elif has_consented is True:
+    else:
         if nickname is not None:
             user_dat['login'] = nickname
         users.update_one({'oa_id': user_dat['id'],
@@ -615,8 +643,7 @@ def authenticate(domain, provider, code):
                                    'use_profile_pic': use_profile_pic,
                                    'email_ok': email_ok}},
                          upsert=True)
-    else:
-        abort(403)
+
     return jsonify({'token': token})
 
 
