@@ -91,3 +91,13 @@ This should create the certs and put them in the certs and certs-data folders. T
 # Renewing certbot
 `docker run -it --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew`
 Then restart the docker containers.
+
+
+# Commands for clearing the DB of user data
+```
+db.mask.remove({'mode': {$ne: "truth"}})
+db.score.remove({})
+db.user.remove({})
+db.user_private.remove({})
+db.transfer_token.remove({})
+```
