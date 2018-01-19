@@ -1,48 +1,59 @@
-nginx:
-    image: nginx
-    restart: always
-    ports:
-        - 80:80
-        - 443:443
-    volumes:
-        - /home/mindr/medulina:/www/static:ro
-        - ./uwsgi_params.par:/etc/nginx/uwsgi_params.par:ro
-        - ./nginx/nginx_test.conf:/etc/nginx/nginx.conf:ro
-        - ./nginx/.ssl:/etc/ssl/certs/
-        - /home/mindr/certs:/etc/letsencrypt
-        - /home/mindr/certs-data:/data/letsencrypt
-        - /home/mindr/logs/nginx:/var/dockerlog
-    volumes_from:
-        - eve
-    links:
-        - eve:eve
-        - swagger_ui:swagger_ui
+version: '2'
 
-swagger_ui:
-    image: swaggerapi/swagger-ui:v3.0.12
-    env_file: .env
+volumes:
+    project:
 
-eve:
-    restart: always
-    env_file: .env
-    build: eve-app
-    expose:
-        - 5000
-    ports:
-        - 5000
-    volumes:
-        - ./eve-app:/usr/src/app
-        - ./nginx/nginx_test.conf:/usr/src/app/nginx.conf
-        - /usr/src/app/static
-    links:
-        - mongodb
-    command: /usr/local/bin/gunicorn -w 2 -b :5000 app:app
+services:
+    medulina:
+        image: akeshavan/medulina
+        volumes:
+            - project:/medulina_v2/serve_this:rw
 
-mongodb:
-  image: mongo
-  volumes:
-    - ~/data/mongodb:/data/db
-  expose:
-    - 27017
-  ports:
-    - 27017
+    nginx:
+        image: nginx
+        restart: always
+        ports:
+            - 80:80
+            - 443:443
+        volumes:
+            - project:/www/static:ro
+            - ./uwsgi_params.par:/etc/nginx/uwsgi_params.par:ro
+            - ./nginx/nginx_test.conf:/etc/nginx/nginx.conf:ro
+            - ./nginx/.ssl:/etc/ssl/certs/
+            - /home/mindr/certs:/etc/letsencrypt
+            - /home/mindr/certs-data:/data/letsencrypt
+            - /home/mindr/logs/nginx:/var/dockerlog
+        volumes_from:
+            - eve
+        links:
+            - eve:eve
+            - swagger_ui:swagger_ui
+
+    swagger_ui:
+        image: swaggerapi/swagger-ui:v3.0.12
+        env_file: .env
+
+    eve:
+        restart: always
+        env_file: .env
+        build: eve-app
+        expose:
+            - 5000
+        ports:
+            - 5000
+        volumes:
+            - ./eve-app:/usr/src/app
+            - ./nginx/nginx_test.conf:/usr/src/app/nginx.conf
+            - /usr/src/app/static
+        links:
+            - mongodb
+        command: /usr/local/bin/gunicorn -w 2 -b :5000 app:app
+
+    mongodb:
+      image: mongo
+      volumes:
+        - ~/data/mongodb:/data/db
+      expose:
+        - 27017
+      ports:
+        - 27017

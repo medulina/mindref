@@ -106,6 +106,17 @@ image_schema = {
         'schema': {
             'type': 'float',
         }
+    },
+    'users': {
+        'type': 'list',
+        'schema': {
+            'type': 'objectid',
+            'data_relation': {
+                'resource': 'user_private',
+                'field': '_id',
+                'embeddable': True
+            },
+        }
     }
 }
 
@@ -123,14 +134,14 @@ mask_schema = {
         'type': 'objectid',
         #'required': True,
         'data_relation': {
-            'resource': 'user',
+            'resource': 'user_private',
             'field': '_id',
             'embeddable': True
         },
     },
     'mode': {
         'type': 'string',
-        'allowed': ['test', 'truth', 'try'],
+        'allowed': ['test', 'truth', 'try', 'init'],
         'required': True
     },
     'score': {
@@ -162,17 +173,19 @@ mask_schema = {
 mask_agg = {}
 
 user_schema = {
-    'username': {
-        'type': 'string',
-        'required': True
+    'user_id': {
+        'type': 'objectid',
+        'required': True,
+        'data_relation': {
+            'resource': 'user_private',
+            'field': '_id',
+            'embeddable': True
+        }
     },
-    'token': {
+    'nickname': {
         'type': 'string'
     },
     'avatar': {
-        'type': 'string',
-    },
-    'oa_id': {
         'type': 'string',
     },
     'n_subs': {
@@ -214,21 +227,18 @@ user_schema = {
         'readonly': True
     },
     'has_consented': {
-        'type': 'bool',
+        'type': 'boolean',
         'default': False
     },
     'use_profile_pic': {
-        'type': 'bool',
+        'type': 'boolean',
         'default': False
     },
-    'provider': {
-        'type': 'string',
-    },
     'email_ok': {
-        'type': 'bool'
+        'type': 'boolean'
     },
     'managing': {
-        'type': 'bool'
+        'type': 'boolean'
     },
     'project_id': {
         'type': 'objectid',
@@ -237,6 +247,10 @@ user_schema = {
             'field': '_id',
             'embeddable': True
         }
+    },
+    'anonymous': {
+        'type': 'boolean',
+        'default': False
     }
 }
 
@@ -245,7 +259,7 @@ token_schema = {
             'type': 'objectid',
             #'required': True,
             'data_relation': {
-                'resource': 'user',
+                'resource': 'user_private',
                 'field': '_id',
                 'embeddable': True
             },
@@ -255,12 +269,34 @@ token_schema = {
     }
 }
 
+user_private_schema = {
+    'avatar': {
+        'type': 'string',
+    },
+    'username': {
+            'type': 'string',
+            'required': True
+        },
+    'oa_id': {
+            'type': 'string',
+        },
+    'email_address': {
+            'type': 'string'
+    },
+    'token': {
+        'type': 'string'
+    },
+    'provider': {
+        'type': 'string',
+    },
+}
+
 transfer_token_schema = {
     'user_id': {
             'type': 'objectid',
             #'required': True,
             'data_relation': {
-                'resource': 'user',
+                'resource': 'user_private',
                 'field': '_id',
                 'embeddable': True
             },
@@ -280,17 +316,17 @@ score_schema = {
         'type': 'objectid',
         #'required': True,
         'data_relation': {
-            'resource': 'user',
+            'resource': 'user_private',
             'field': '_id',
             'embeddable': True
         },
     },
-    'username': {
+    'nickname': {
         'type': 'string',
         #'required': True,
         'data_relation': {
             'resource': 'user',
-            'field': 'username',
+            'field': 'nickname',
             'embeddable': True
         },
     },
@@ -337,6 +373,10 @@ score_schema = {
         'type': 'float',
         'default': 0.0,
         'readonly': True
+    },
+    'anonymous': {
+        'type': 'boolean',
+        'default': False
     }
 }
 
@@ -408,7 +448,8 @@ settings = {
                   'Authorization',
                   'Content-Type',
                   'username',
-                  'password'],
+                  'password',
+                  'If-Match'],
     'X_ALLOW_CREDENTIALS': True,
     'DOMAIN': {
         'image': {
@@ -419,6 +460,10 @@ settings = {
         },
         'user': {
             'item_title': 'user',
+        },
+        'user_private': {
+            'item_title': 'user_private',
+            'internal_resource': True
         },
         'token': {
             'item_title': 'token',
@@ -448,6 +493,7 @@ settings = {
 settings['DOMAIN']['image']['schema'] = deepcopy(image_schema)
 settings['DOMAIN']['mask']['schema'] = deepcopy(mask_schema)
 settings['DOMAIN']['user']['schema'] = deepcopy(user_schema)
+settings['DOMAIN']['user_private']['schema'] = deepcopy(user_private_schema)
 settings['DOMAIN']['transfer_token']['schema'] = deepcopy(transfer_token_schema)
 settings['DOMAIN']['token']['schema'] = deepcopy(token_schema)
 settings['DOMAIN']['score']['schema'] = deepcopy(score_schema)
