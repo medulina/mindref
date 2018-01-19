@@ -19,6 +19,7 @@ from eve.auth import BasicAuth
 from eve_swagger import swagger
 from settings import settings
 from bson.objectid import ObjectId
+from bson.errors import InvalidId
 from flask import request
 from flask.json import jsonify
 from flask_cors import CORS
@@ -70,6 +71,7 @@ app.add_url_rule('/docs/api', 'eve_swagger.index')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['TOKEN_RE'] = re.compile('access_token=([a-zA-Z0-9]+)')
 app.config['TASK_RE'] = re.compile('"task":"(.*?)"')
+
 app.config.from_envvar('MINDR_CFG_PATH')
 CORS(app)
 
@@ -275,17 +277,16 @@ def on_insert_mask(items):
             update_score(i)
         
 
-def get_seen_images(user_id, mode, task):
+def get_seen_images(lookup):
+    gsi_lookup = lookup.copy()
+    if gsi_lookup['mode'] == 'train':
+        gsi_lookup['mode'] = 'try'
     masks = app.data.driver.db['mask']
-    pipeline = [{'$match': {'user_id': ObjectId(user_id),
-                            'mode': mode,
-                            'task': task}},
+    pipeline = [{'$match': lookup},
                 {'$group': {'_id': '$image_id', 'count': {'$sum': 1}}}]
     seen_images = pd.DataFrame([r for r in masks.aggregate(pipeline)], columns=['_id', 'count'])
     seen_ids = list(seen_images['_id'].values)
     return seen_images, seen_ids
-
-
 
 def pre_image_get_callback(request, lookup):
     """Decide if the user will get a train or test image
@@ -295,6 +296,11 @@ def pre_image_get_callback(request, lookup):
     try:
         user_id = request.args['user_id']
         token = request.args['token']
+        #task = request.args['task']
+        try:
+            prev_img_id = ObjectId(request.args['prev_img_id'])
+        except InvalidId:
+            prev_img_id = None
         try:
             task = re.findall(app.config['TASK_RE'], request.args['where'])[0]
         except IndexError as e:
@@ -302,20 +308,10 @@ def pre_image_get_callback(request, lookup):
     except KeyError:
         # raise type(e)(str(e)+request.args['where'])
         return None
-
+    
+    scores = app.data.driver.db['score']
     users = app.data.driver.db['user']
     images = app.data.driver.db['image']
-    #a = users.find_one({'_id': ObjectId(user_id), 'token': token})
-    seen_test_images, seen_test_ids = get_seen_images(user_id, 'test', task)
-
-    task_test_images = images.find({'task': task, 'mode': 'test'})
-    task_test_images = [r for r in task_test_images]
-
-    task_train_images = images.find({'task': task, 'mode': 'train'})
-    task_train_images = [r for r in task_train_images]
-    lookup['task'] = task
-
-    scores = app.data.driver.db['score']
     ups = scores.find_one({'user_project_id': str(user_id)+'__'+task})
     if ups is None:
         ups = {}
@@ -330,105 +326,54 @@ def pre_image_get_callback(request, lookup):
         ups['roll_scores'] = []
         ups['roll_ave_score'] = 0
         scores.insert_one(ups)
-
     train_roll = randint(1, test_per_train+1)
+    test_elligible = ((ups['roll_ave_score'] >= test_thresh)
+                      and (len(ups['roll_scores']) >= roll_n)
+                      and (train_roll < test_per_train))
 
-    # Decide if user will get a train or test image
-    if (ups['roll_ave_score'] >= test_thresh) and (len(ups['roll_scores']) >= roll_n) and (train_roll < test_per_train) and (len(task_test_images) > 0):
+    imode_dict = {True: 'test', False: 'train'}
+    imode = imode_dict[test_elligible]
 
-        # Getting a novel test image if possible
-        mode = 'test'
-        imode = 'test'
+    # Try to find an image with the right mode
+    lookup['task'] = task
+    lookup['mode'] = imode
+    if prev_img_id:
+        lookup['id'] = {'$ne': prev_img_id}
+    
+    if not images.find_one(lookup):
+        # If there isn't an image with the right mode
+        # Try to get an image with the other mode
+        test_elligible = not test_elligible
+        imode = imode_dict[test_elligible]
+        lookup['mode'] = imode
+        if not images.find_one(lookup):
+            # Can't get an image in either case, give up
+            abort(404)
 
-        unseen_images = images.find({'_id': {'$nin': seen_test_ids},
-                                     'mode': imode,
-                                     'task': task},
-                                    {'_id': 1})
-        unseen_images = [r['_id'] for r in unseen_images]
-
-        if len(unseen_images) > 0:
-            lookup['_id'] = ObjectId(choice(unseen_images, 1)[0])
-            #lookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("Image id %s not found. Image ID was looked up from the unseen test images"%lookup['_id'])
-            
-        else:
-            least_seen = list(seen_test_images.loc[seen_test_images['count'] == seen_test_images['count'].min(), '_id'].values)
-            lookup['_id'] = ObjectId(choice(least_seen, 1)[0])
-            #lookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("Image id %s not found. Image ID was looked up from the least seen test images"%lookup['_id'])
-            
-
-    elif randint(1, train_repeat+1) == train_repeat:
-        # Getting a repeated training image
-        mode = 'try'
-        imode = 'train'
-        seen_images, seen_ids = get_seen_images(user_id, mode, task)
-
-
+    # Should we send them a repeated test image
+    if (not test_elligible) and (randint(1, train_repeat+1) == train_repeat):
+        # give a repeated image
+        seen_images, seen_ids = get_seen_images(lookup)
         if len(seen_ids) > 0:
             lookup['_id'] = ObjectId(choice(seen_ids, 1)[0])
-            #ookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("I have a mask for this image, but I can't find the image anymore. Repeat.")
-        else:
-            lookup['mode'] = imode
+            return None
 
-    elif len(task_train_images) > 0:
-        # Getting a novel training image if possible
-        # If not, get a training image they've seen the fewest number of times
-        # Find the images a user has seen
-        mode = 'try'
-        imode = 'train'
-        seen_images, seen_ids = get_seen_images(user_id, mode, task)
-        unseen_images = images.find({'_id': {'$nin': seen_ids},
-                                     'mode': imode,
-                                     'task': task},
-                                    {'_id': 1})
-        unseen_images = [r['_id'] for r in unseen_images]
-        if len(unseen_images) > 0:
-            lookup['_id'] = choice(unseen_images, 1)[0]
-            #lookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("Image id %s not found. Image ID was looked up from the unseen training images"%lookup['_id'])
-        elif len(seen_ids) == 0:
-            raise Exception("Seen Ids and Unseen Ids are both empty. FML. Train images.")
-        else:
-            least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
-            lookup['_id'] = choice(least_seen, 1)[0]
-            #lookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen train images")
-    elif len(task_test_images) > 0:
-        mode = 'test'
-        imode = 'test'
-        seen_images, seen_ids = get_seen_images(user_id, mode, task)
-        unseen_images = images.find({'_id': {'$nin': seen_ids},
-                                     'mode': imode,
-                                     'task': task},
-                                    {'_id': 1})
-        unseen_images = [r['_id'] for r in unseen_images]
-        if len(unseen_images) > 0:
-            lookup['_id'] = choice(unseen_images, 1)[0]
-            #lookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("Image id %s not found. Image ID was looked up from the unseen test images"%lookup['_id'])
-        elif len(seen_ids) == 0:
-            raise Exception("Seen Ids and Unseen Ids are both empty. FML. Test images.")
-        else:
-            least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
-            lookup['_id'] = choice(least_seen, 1)[0]
-            #lookup['mode'] = imode
-            if images.find_one(lookup) is None:
-                raise Exception("I have a mask for this image, but I can't find the image anymore. Least Seen test images")
+    # If we're not repeating give them an unseen image
+    seen_images, seen_ids = get_seen_images(lookup)
+    unseen_lookup = lookup.copy()
+    unseen_lookup['_id'] = {'$ne': seen_ids + [prev_img_id]}
+    unseen_images = images.find(unseen_lookup)
+    unseen_images = [r['_id'] for r in unseen_images]
+    if len(unseen_images) > 0:
+        lookup['_id'] = ObjectId(choice(unseen_images, 1)[0])
     else:
-        abort(404)
+        # If we can't give them an unseen image give them a least seen image
+        least_seen = list(seen_images.loc[seen_images['count'] == seen_images['count'].min(), '_id'].values)
+        lookup['_id'] = choice(least_seen, 1)[0]
 
-    #run the lookup and raise an exception if it returns null
-    if images.find_one(lookup) is None:
+    if (images.find_one(lookup) is None) or (images.find_one(lookup)['_id'] == prev_img_id):
         raise Exception(lookup)
-    #raise Warning(str(lookup))    
+    
 
 def get_cfx_masks(truth, attempt):
     x = deepcopy(truth)

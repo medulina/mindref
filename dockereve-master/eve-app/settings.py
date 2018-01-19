@@ -107,17 +107,6 @@ image_schema = {
             'type': 'float',
         }
     },
-    'users': {
-        'type': 'list',
-        'schema': {
-            'type': 'objectid',
-            'data_relation': {
-                'resource': 'user_private',
-                'field': '_id',
-                'embeddable': True
-            },
-        }
-    }
 }
 
 mask_schema = {
