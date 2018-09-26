@@ -88,10 +88,17 @@ Then, while the site is up with that config, run the certbot docker container:
 `docker run -it --rm -v certs:/etc/letsencrypt -v certs-data:/data/letsencrypt certbot/certbot certonly --webroot --webroot-path=/data/letsencrypt  -d test.medulina.com -d testapi.medulina.com`
 This should create the certs and put them in the certs and certs-data folders. Then you can run `docker-compose build; docker-compose down -v; docker-compose up`. If you're on prod, there might be a different docker-compose file to use.
 
-# Renewing certbot
+# Renewing certbot manually
 `docker run -it --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew`
 Then restart the docker containers.
 
+# Setting up a cron job for certbot renewal
+Add user to `/etc/cron.allow`
+Then as the user you'd like to renew from run `crontab -e`
+Then just add the following line to the crontab:
+```
+1 1 1 * * docker run --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew > ~/cronlog 2>&1
+```
 
 # Commands for clearing the DB of user data
 ```
