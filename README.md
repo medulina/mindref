@@ -102,3 +102,24 @@ mongodb:
     - 27017
   command: mongod -f /etc/mongod.conf
 ```
+
+# Renewing certbot manually
+`docker run -it --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew`
+Then restart the docker containers.
+
+# Setting up a cron job for certbot renewal
+Add user to `/etc/cron.allow`
+Then as the user you'd like to renew from run `crontab -e`
+Then just add the following line to the crontab:
+```
+1 1 1 * * docker run --rm -v /home/mindr/le_log:/var/log/letsencrypt -v /home/mindr/certs:/etc/letsencrypt -v /home/mindr/certs-data:/data/letsencrypt certbot/certbot renew > ~/cronlog 2>&1
+```
+
+# Commands for clearing the DB of user data
+```
+db.mask.remove({'mode': {$ne: "truth"}})
+db.score.remove({})
+db.user.remove({})
+db.user_private.remove({})
+db.transfer_token.remove({})
+```
