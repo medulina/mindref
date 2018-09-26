@@ -275,7 +275,10 @@ def on_insert_mask(items):
             cm = get_cfx_mat(truth['pic'], i['pic'])
             i['score'] = get_dice(cm)
             update_score(i)
-        
+        # For test data update the count of test submissions
+        elif i['mode'] == 'test':
+            update_score(i)
+
 
 def get_seen_images(lookup):
     gsi_lookup = lookup.copy()
